@@ -146,6 +146,14 @@ public class GameViewV4 extends GameView {
         }
         yspeed=Math.min(690f,yspeed+82f*dt);
         yx+=dir*yspeed*dt;
+
+        // Chase failsafe: Yoshi must never be logically active but lost far
+        // outside the playable camera. Re-enter from the pursuit side.
+        if(Float.isNaN(yx) || Float.isInfinite(yx) || Math.abs(yx-x)>760f){
+            yx=toStart?x+610f:x-610f;
+            yy=GROUND-94f;
+            yGrace4=.65f;
+        }
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
         // Capture is tied to the visible sprite centers, not a broad invisible box.
         float marioCx=x+18f, marioCy=y+27f;
@@ -164,7 +172,7 @@ public class GameViewV4 extends GameView {
 
     @Override void drawYoshi(Canvas c){
         Bitmap b=(yGrace4>0&&yoshiFly!=null)?yoshiFly:(yoshiChase!=null?yoshiChase:yoshiRun);
-        if(b==null)return;
+        if(b==null){ yActive=false; return; }
         float pulse=.5f+.5f*(float)Math.sin(clock*8f);
         p.setColor(Color.argb((int)(65+45*pulse),255,25,20));
         c.drawCircle(yx+42,yy+36,48,p);
