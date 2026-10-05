@@ -34,21 +34,37 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import base64, re
+          import base64
           from pathlib import Path
+
           raw = Path('app/src/main/res/raw')
-          for stem in ('escape_menu','run_you_fool','escape_lap2'):
+          tracks = ('escape_menu', 'run_you_fool', 'escape_lap2')
+
+          for stem in tracks:
               src = raw / f'{stem}.b64'
-              data = src.read_text(errors='ignore')
-              data = ''.join(re.findall(r'[A-Za-z0-9+/=]', data))
-              data = data.rstrip('=')
-              if len(data) % 4 == 1:
-                  data = data[:-1]
-              data += '=' * ((4 - len(data) % 4) % 4)
-              out = base64.b64decode(data, validate=False)
-              (raw / f'{stem}.mp3').write_bytes(out)
-              src.unlink()
-              print(stem, len(out), 'bytes')
+              dst = raw / f'{stem}.mp3'
+              if not src.exists():
+                  if dst.exists():
+                      print(f'{stem}: MP3 already present')
+                      continue
+                  raise FileNotFoundError(f'Missing {src}')
+
+              # Files are plain base64 text. Strip whitespace only; do not
+              # silently delete arbitrary characters, which can corrupt audio.
+              data = ''.join(src.read_text(encoding='utf-8-sig').split())
+              data += '=' * (-len(data) % 4)
+              try:
+                  decoded = base64.b64decode(data, validate=True)
+              except Exception as exc:
+                  raise RuntimeError(f'Invalid base64 in {src}: {exc}') from exc
+
+              if len(decoded) < 3 or decoded[:3] != b'ID3':
+                  # MP3 may also start directly with an MPEG frame sync.
+                  if len(decoded) < 2 or decoded[0] != 0xFF or (decoded[1] & 0xE0) != 0xE0:
+                      raise RuntimeError(f'{src} decoded, but output does not look like MP3')
+
+              dst.write_bytes(decoded)
+              print(f'{stem}: {len(decoded)} bytes -> {dst}')
           PY
 
       - name: Setup Gradle 8.7
