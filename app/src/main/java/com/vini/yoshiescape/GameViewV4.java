@@ -14,7 +14,9 @@ public class GameViewV4 extends GameView {
     private boolean bgmLoop=false;
     private boolean appPaused=false;
     private int loopStartMs=0;
-    private float yGrace4=0f;\n    private boolean storyIntro=true;\n    private int storyPage=0;
+    private float yGrace4=0f;
+    private boolean storyIntro=true;
+    private int storyPage=0;
 
     public GameViewV4(Context c){
         super(c);
