@@ -16,7 +16,8 @@ public class GameViewV4 extends GameView {
     private int loopStartMs=0;
     private float yGrace4=0f;
     private boolean storyIntro=true;
-    private int storyPage=0;\n    private final android.content.SharedPreferences prefs;
+    private int storyPage=0;
+    private final android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
         super(c);
