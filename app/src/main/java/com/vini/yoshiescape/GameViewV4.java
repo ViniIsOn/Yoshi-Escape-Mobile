@@ -149,8 +149,8 @@ public class GameViewV4 extends GameView {
 
         // Chase failsafe: Yoshi must never be logically active but lost far
         // outside the playable camera. Re-enter from the pursuit side.
-        if(Float.isNaN(yx) || Float.isInfinite(yx) || Math.abs(yx-x)>760f){
-            yx=toStart?x+610f:x-610f;
+        if(Float.isNaN(yx) || Float.isInfinite(yx) || Math.abs(yx-x)>500f){
+            yx=toStart?x+430f:x-430f;
             yy=GROUND-94f;
             yGrace4=.65f;
         }
