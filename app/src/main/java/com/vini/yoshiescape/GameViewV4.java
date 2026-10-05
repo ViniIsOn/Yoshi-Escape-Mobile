@@ -12,7 +12,7 @@ public class GameViewV4 extends GameView {
     private MediaPlayer bgm;
     private int currentTrack=0;
     private boolean bgmLoop=false;
-    private boolean appPaused=false;
+    private boolean appPaused=false;\n    private int loopStartMs=0;
     private float yGrace4=0f;
 
     public GameViewV4(Context c){
@@ -33,7 +33,7 @@ public class GameViewV4 extends GameView {
         }
     }
 
-    private void playTrack(int res,boolean loop){
+    private int loopPoint(int res){\n        // Skip the intro on repeats so looping sounds like a continuation.\n        if(res==R.raw.escape_menu)return 4200;\n        if(res==R.raw.run_you_fool)return 6100;\n        if(res==R.raw.escape_final_v2)return 4300;\n        if(res==R.raw.escape_lap2)return 3100;\n        if(res==R.raw.die)return 5200;\n        return 0;\n    }\n\n    private void playTrack(int res,boolean loop){
         if(!sound||ctx4==null)return;
         if(bgm!=null && currentTrack==res){
             bgmLoop=loop;
@@ -120,7 +120,7 @@ public class GameViewV4 extends GameView {
         yActive=true;
         yGrace4=3.2f;
         yspeed=150f;
-        yx=toStart?x+470f:x-470f;
+        yx=toStart?x+330f:x-330f;
         yy=GROUND-102f;
     }
 
@@ -151,7 +151,23 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.argb((int)(65+45*pulse),255,25,20));
         c.drawCircle(yx+45,yy+42,68,p);
         boolean flip=x<yx;
-        drawBitmapAspect(c,b,new RectF(yx-24,yy-24,yx+126,yy+104),flip,false);
+        // Draw Yoshi larger and keep a directional warning visible whenever
+        // he is outside the camera. This prevents invisible/unfair catches.
+        drawBitmapAspect(c,b,new RectF(yx-38,yy-34,yx+150,yy+122),flip,false);
+
+        float viewLeft=cam, viewRight=cam+(getWidth()/(getHeight()/H));
+        if(yx<viewLeft+35 || yx>viewRight-35){
+            boolean right=yx>viewRight-35;
+            float ax=right?viewRight-62:viewLeft+62;
+            float ay=185;
+            p.setColor(Color.argb(220,210,35,35));
+            Path arrow=new Path();
+            if(right){arrow.moveTo(ax+28,ay);arrow.lineTo(ax-18,ay-24);arrow.lineTo(ax-18,ay+24);}
+            else{arrow.moveTo(ax-28,ay);arrow.lineTo(ax+18,ay-24);arrow.lineTo(ax+18,ay+24);}
+            arrow.close();c.drawPath(arrow,p);
+            p.setColor(Color.WHITE);p.setTextSize(18);p.setFakeBoldText(true);
+            c.drawText("YOSHI",right?ax-80:ax+36,ay+6,p);p.setFakeBoldText(false);
+        }
         if(yGrace4>0){
             p.setColor(Color.WHITE);
             p.setTextSize(17);
