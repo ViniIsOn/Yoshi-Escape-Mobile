@@ -22,7 +22,7 @@ public class MainActivity extends Activity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         hideSystemUi();
 
-        gameView = new GameViewV3(this);
+        gameView = new GameView(this);
         setContentView(gameView);
     }
 
