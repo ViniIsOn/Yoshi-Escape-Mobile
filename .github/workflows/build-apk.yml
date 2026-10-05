@@ -50,10 +50,7 @@ jobs:
                   raise FileNotFoundError(f'Missing {src}')
 
               text = src.read_text(encoding='utf-8-sig', errors='ignore')
-              # Keep only the Base64 alphabet. Some stored files contain
-              # accidental separators/extra characters from transport.
               data = ''.join(re.findall(r'[A-Za-z0-9+/=]', text))
-              # Padding is only valid at the end. Normalize it before decode.
               data = data.replace('=', '')
               data += '=' * (-len(data) % 4)
               decoded = base64.b64decode(data, validate=False)
@@ -63,6 +60,11 @@ jobs:
 
               dst.write_bytes(decoded)
               print(f'{stem}: {len(decoded)} bytes -> {dst}')
+
+              # Android resource names ignore the extension, so keeping
+              # both stem.b64 and stem.mp3 in res/raw creates duplicates.
+              src.unlink()
+              print(f'{stem}: removed temporary Base64 source')
           PY
 
       - name: Setup Gradle 8.7
