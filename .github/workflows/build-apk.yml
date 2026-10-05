@@ -33,12 +33,23 @@ jobs:
       - name: Decode game music
         shell: bash
         run: |
-          mkdir -p /tmp/yoshi_music
-          base64 -d app/src/main/res/raw/escape_menu.b64 > /tmp/yoshi_music/escape_menu.mp3
-          base64 -d app/src/main/res/raw/run_you_fool.b64 > /tmp/yoshi_music/run_you_fool.mp3
-          base64 -d app/src/main/res/raw/escape_lap2.b64 > /tmp/yoshi_music/escape_lap2.mp3
-          rm app/src/main/res/raw/escape_menu.b64 app/src/main/res/raw/run_you_fool.b64 app/src/main/res/raw/escape_lap2.b64
-          mv /tmp/yoshi_music/*.mp3 app/src/main/res/raw/
+          python3 - <<'PY'
+          import base64, re
+          from pathlib import Path
+          raw = Path('app/src/main/res/raw')
+          for stem in ('escape_menu','run_you_fool','escape_lap2'):
+              src = raw / f'{stem}.b64'
+              data = src.read_text(errors='ignore')
+              data = ''.join(re.findall(r'[A-Za-z0-9+/=]', data))
+              data = data.rstrip('=')
+              if len(data) % 4 == 1:
+                  data = data[:-1]
+              data += '=' * ((4 - len(data) % 4) % 4)
+              out = base64.b64decode(data, validate=False)
+              (raw / f'{stem}.mp3').write_bytes(out)
+              src.unlink()
+              print(stem, len(out), 'bytes')
+          PY
 
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
