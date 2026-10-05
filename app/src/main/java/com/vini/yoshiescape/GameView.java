@@ -31,7 +31,7 @@ public class GameView extends View {
     boolean yActive,toStart=false,sound=true,faceRight=true,grounded=true;
     boolean leftDown,rightDown,jumpDown,runDown;
     long last;
-    String rank="C";
+    String rank="C", deathCause="";
 
     public GameView(Context c){
         super(c); setKeepScreenOn(true);
@@ -93,7 +93,7 @@ public class GameView extends View {
     void start(){
         state=PLAY; lap=0; lives=3; ringCount=0; score=0;
         x=START; y=GROUND-48; vx=vy=0; cam=0; safeX=x; safeY=y; safeT=0; inv=0;
-        coyote=.1f; jumpBuffer=0; yActive=false; toStart=false; time=50; rank="C";
+        coyote=.1f; jumpBuffer=0; yActive=false; toStart=false; time=50; rank="C"; deathCause="";
         for(Ring r:rings)r.got=false;
         last=System.nanoTime();
     }
@@ -130,7 +130,7 @@ public class GameView extends View {
             safeT+=dt;
             if(safeT>.75f){safeX=x;safeY=y;safeT=0;}
         } else safeT=0;
-        if(y>630)loseLife();
+        if(y>630){deathCause="FALL";loseLife();}
 
         if(state==PLAY && x>GOAL-50) beginLap(1,true);
         if(state==ESCAPE||state==HUNT){
@@ -207,7 +207,7 @@ public class GameView extends View {
         if(inv>0)return;
         for(RectF s:spikes)if(RectF.intersects(pr(),s)){
             if(ringCount>0){ringCount=Math.max(0,ringCount-Math.min(20,ringCount));inv=1.5f;vy=-360;vx=faceRight?-260:260;}
-            else loseLife();
+            else {deathCause="SPIKES";loseLife();}
             beep(ToneGenerator.TONE_PROP_NACK,80);return;
         }
     }
@@ -418,7 +418,7 @@ public class GameView extends View {
         float cw=Math.min(w*.68f,700),ch=Math.min(h*.62f,390),l=(w-cw)/2,t=(h-ch)/2;p.setColor(Color.rgb(12,35,61));c.drawRoundRect(l,t,l+cw,t+ch,30,30,p);
         p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setColor(over?Color.rgb(255,95,80):rank.equals("P")?Color.rgb(255,100,220):Color.rgb(246,200,60));
         p.setTextSize(Math.max(36,h*.105f));c.drawText(over?"RUN OVER":"RANK "+rank,w/2f,t+ch*.34f,p);
-        p.setColor(Color.WHITE);p.setTextSize(Math.max(16,h*.034f));c.drawText(over?(yActive?"Yoshi alcançou o Mario.":"Você ficou sem vidas."):"LAP "+lap+"  •  RINGS "+ringCount+"  •  SCORE "+score,w/2f,t+ch*.55f,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(16,h*.034f));c.drawText(over?(deathCause.equals("YOSHI")?"Yoshi alcançou o Mario.":deathCause.equals("SPIKES")?"Os espinhos acabaram com a corrida.":deathCause.equals("FALL")?"Mario caiu no vazio.":"Você ficou sem vidas."):"LAP "+lap+"  •  RINGS "+ringCount+"  •  SCORE "+score,w/2f,t+ch*.55f,p);
         p.setColor(Color.rgb(95,213,255));c.drawText("TOQUE PARA VOLTAR AO MENU",w/2f,t+ch*.78f,p);p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
     }
 
