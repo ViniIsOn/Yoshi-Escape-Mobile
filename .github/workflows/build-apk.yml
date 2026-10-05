@@ -58,7 +58,8 @@ jobs:
         run: |
           # Build a real raster launcher icon from the existing Yoshi artwork.
           # This avoids launchers falling back to Android's generic icon.
-          SRC="app/src/main/res/drawable/yoshi.png"
+          SRC="app/src/main/res/drawable-nodpi/yoshi.png"
+          if [ ! -f "$SRC" ]; then echo "Missing launcher source: $SRC"; exit 1; fi
           if [ -f "$SRC" ]; then
             mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
             if command -v convert >/dev/null 2>&1; then
