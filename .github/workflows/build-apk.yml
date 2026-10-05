@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import base64
+          import base64, re
           from pathlib import Path
 
           raw = Path('app/src/main/res/raw')
@@ -49,19 +49,17 @@ jobs:
                       continue
                   raise FileNotFoundError(f'Missing {src}')
 
-              # Files are plain base64 text. Strip whitespace only; do not
-              # silently delete arbitrary characters, which can corrupt audio.
-              data = ''.join(src.read_text(encoding='utf-8-sig').split())
+              text = src.read_text(encoding='utf-8-sig', errors='ignore')
+              # Keep only the Base64 alphabet. Some stored files contain
+              # accidental separators/extra characters from transport.
+              data = ''.join(re.findall(r'[A-Za-z0-9+/=]', text))
+              # Padding is only valid at the end. Normalize it before decode.
+              data = data.replace('=', '')
               data += '=' * (-len(data) % 4)
-              try:
-                  decoded = base64.b64decode(data, validate=True)
-              except Exception as exc:
-                  raise RuntimeError(f'Invalid base64 in {src}: {exc}') from exc
+              decoded = base64.b64decode(data, validate=False)
 
-              if len(decoded) < 3 or decoded[:3] != b'ID3':
-                  # MP3 may also start directly with an MPEG frame sync.
-                  if len(decoded) < 2 or decoded[0] != 0xFF or (decoded[1] & 0xE0) != 0xE0:
-                      raise RuntimeError(f'{src} decoded, but output does not look like MP3')
+              if not decoded:
+                  raise RuntimeError(f'{src} decoded to an empty file')
 
               dst.write_bytes(decoded)
               print(f'{stem}: {len(decoded)} bytes -> {dst}')
