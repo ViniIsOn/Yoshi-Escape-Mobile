@@ -30,6 +30,13 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Decode game music
+        shell: bash
+        run: |
+          base64 -d app/src/main/res/raw/escape_menu.b64 > app/src/main/res/raw/escape_menu.mp3
+          base64 -d app/src/main/res/raw/run_you_fool.b64 > app/src/main/res/raw/run_you_fool.mp3
+          base64 -d app/src/main/res/raw/escape_lap2.b64 > app/src/main/res/raw/escape_lap2.mp3
+
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -41,6 +48,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Yoshi-Escape-Mobile-v0.3-beta
+          name: Yoshi-Escape-Mobile-v0.4-beta
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
