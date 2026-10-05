@@ -2,39 +2,83 @@ package com.vini.yoshiescape;
 
 import android.content.Context;
 import android.graphics.*;
+import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.ToneGenerator;
 
 public class GameViewV4 extends GameView {
-    private Context ctx4;
+    private final Context ctx4;
     private MediaPlayer bgm;
+    private int currentTrack=0;
+    private boolean bgmLoop=false;
+    private boolean appPaused=false;
     private float yGrace4=0f;
 
     public GameViewV4(Context c){
         super(c);
-        ctx4=c;
+        ctx4=c.getApplicationContext();
         playTrack(R.raw.escape_menu,true);
     }
 
     private void stopTrack(){
+        currentTrack=0;
+        bgmLoop=false;
         if(bgm!=null){
-            try{bgm.stop();}catch(Exception ignored){}
+            try{bgm.setOnCompletionListener(null);}catch(Exception ignored){}
+            try{if(bgm.isPlaying())bgm.stop();}catch(Exception ignored){}
+            try{bgm.reset();}catch(Exception ignored){}
             try{bgm.release();}catch(Exception ignored){}
             bgm=null;
         }
     }
 
     private void playTrack(int res,boolean loop){
-        stopTrack();
         if(!sound||ctx4==null)return;
+        if(bgm!=null && currentTrack==res){
+            bgmLoop=loop;
+            try{
+                bgm.setLooping(loop);
+                if(!appPaused&&!bgm.isPlaying())bgm.start();
+            }catch(Exception ignored){}
+            return;
+        }
+        stopTrack();
+        currentTrack=res;
+        bgmLoop=loop;
         try{
-            bgm=MediaPlayer.create(ctx4,res);
+            AudioAttributes attrs=new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+            bgm=MediaPlayer.create(ctx4,res,attrs,AudioManager.AUDIO_SESSION_ID_GENERATE);
             if(bgm!=null){
                 bgm.setLooping(loop);
                 bgm.setVolume(.72f,.72f);
-                bgm.start();
+                bgm.setOnErrorListener((mp,what,extra)->{
+                    stopTrack();
+                    return true;
+                });
+                if(!appPaused)bgm.start();
             }
-        }catch(Exception ignored){}
+        }catch(Exception ignored){
+            stopTrack();
+        }
+    }
+
+    public void pauseMusic(){
+        appPaused=true;
+        if(bgm!=null){
+            try{if(bgm.isPlaying())bgm.pause();}catch(Exception ignored){}
+        }
+    }
+
+    public void resumeMusic(){
+        appPaused=false;
+        if(sound&&bgm!=null){
+            try{if(!bgm.isPlaying())bgm.start();}catch(Exception ignored){}
+        }else if(sound&&state==MENU){
+            playTrack(R.raw.escape_menu,true);
+        }
     }
 
     @Override void menu(){
@@ -43,15 +87,32 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void start(){
-        stopTrack();
         super.start();
+        // Normal run before the escape laps.
+        playTrack(R.raw.run_you_fool,true);
     }
 
     @Override void beginLap(int l,boolean left){
         super.beginLap(l,left);
-        if(l==1)playTrack(R.raw.run_you_fool,true);
+        // Requested order: EscapeFinalV2 is the first escape lap.
+        if(l==1)playTrack(R.raw.escape_final_v2,true);
         else if(l==2)playTrack(R.raw.escape_lap2,true);
         else playTrack(R.raw.die,true);
+    }
+
+    @Override void update(float dt){
+        int before=state;
+        super.update(dt);
+        // When the timer expires and the hunt begins, play the warning sting
+        // once, then resume the lap-3 chase music when it finishes.
+        if(before!=HUNT && state==HUNT && lap<3){
+            playTrack(R.raw.time_is_up,false);
+            if(bgm!=null){
+                bgm.setOnCompletionListener(mp->{
+                    if(state==HUNT&&sound)playTrack(R.raw.die,true);
+                });
+            }
+        }
     }
 
     @Override void spawnYoshi(){
