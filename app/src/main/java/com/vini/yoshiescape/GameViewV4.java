@@ -16,7 +16,7 @@ public class GameViewV4 extends GameView {
     private int loopStartMs=0;
     private float yGrace4=0f;
     private boolean storyIntro=true;
-    private int storyPage=0;
+    private int storyPage=0;\n    private final android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
         super(c);
@@ -136,14 +136,16 @@ public class GameViewV4 extends GameView {
         if(dir==0)dir=toStart?-1:1;
         if(yGrace4>0){
             yGrace4-=dt;
-            yx+=dir*110f*dt;
+            yx+=dir*180f*dt;
             yy=GROUND-104f+(float)Math.sin(clock*7f)*8f;
             return;
         }
-        yspeed=Math.min(430f,yspeed+34f*dt);
+        yspeed=Math.min(610f,yspeed+62f*dt);
         yx+=dir*yspeed*dt;
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
-        if(Math.abs((yx+40)-(x+18))<40 && Math.abs((yy+38)-(y+24))<62){
+        RectF marioHit=new RectF(x+7,y+8,x+31,y+46);
+        RectF yoshiHit=new RectF(yx+16,yy+13,yx+72,yy+69);
+        if(RectF.intersects(marioHit,yoshiHit)){
             state=OVER;
             vx=vy=0;
             stopTrack();
@@ -246,27 +248,45 @@ public class GameViewV4 extends GameView {
 
     @Override void start(){
         super.start();
-        storyIntro=true; storyPage=0;
+        storyIntro=!prefs.getBoolean("prologue_seen",false); storyPage=0;
         playTrack(R.raw.run_you_fool,true);
     }
 
     private void drawStory(Canvas c){
         int w=c.getWidth(),h=c.getHeight();
-        p.setColor(Color.argb(235,5,10,20));c.drawRect(0,0,w,h,p);
+        p.setColor(Color.rgb(10,13,24));c.drawRect(0,0,w,h,p);
+        float gap=12, top=h*.12f, ph=h*.58f, pw=(w-gap*4)/3f;
+
+        for(int i=0;i<3;i++){
+            float l=gap+(pw+gap)*i;
+            p.setColor(i==storyPage%3?Color.rgb(245,245,225):Color.rgb(205,210,205));
+            c.drawRoundRect(l,top,l+pw,top+ph,12,12,p);
+            p.setColor(Color.rgb(65,145,90));
+            c.drawRect(l+8,top+8,l+pw-8,top+ph*.68f,p);
+        }
+
+        // Comic action panels: Mario jumps, Yoshi is left at an edge,
+        // then the remembered chase begins. Short captions keep it visual.
+        int scene=storyPage;
+        float l=gap+(pw+gap)*(scene%3);
+        if(scene==0){
+            drawBitmapAspect(c,marioJump,new RectF(l+pw*.52f,top+45,l+pw*.82f,top+ph*.55f),false,true);
+            drawBitmapAspect(c,yoshiRun,new RectF(l+pw*.15f,top+ph*.38f,l+pw*.48f,top+ph*.66f),false,false);
+        }else if(scene==1){
+            drawBitmapAspect(c,marioJump,new RectF(l+pw*.65f,top+35,l+pw*.93f,top+ph*.5f),false,true);
+            drawBitmapAspect(c,yoshiRun,new RectF(l+pw*.12f,top+ph*.42f,l+pw*.45f,top+ph*.7f),true,false);
+        }else{
+            drawBitmapAspect(c,yoshiChase,new RectF(l+pw*.28f,top+30,l+pw*.78f,top+ph*.66f),false,false);
+        }
+
+        String[] cap={"OUTRO SALTO...","DE NOVO NÃO.","AGORA É MINHA VEZ."};
         p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);
-        p.setColor(Color.rgb(116,238,66));p.setTextSize(Math.max(30,h*.065f));
-        c.drawText(storyPage==0?"PROLOGUE":"THE LAST RIDE",w/2f,h*.25f,p);
-        p.setColor(Color.WHITE);p.setTextSize(Math.max(16,h*.032f));p.setFakeBoldText(false);
-        String[] lines=storyPage==0?
-            new String[]{"Por anos, Mario contou com Yoshi para atravessar o impossível.",
-                         "Saltos, abismos, atalhos... sempre havia outro Yoshi esperando.",
-                         "Mas um deles começou a lembrar."}:
-            new String[]{"Nas ruínas, Yoshi encontrou selas quebradas e pegadas antigas.",
-                         "Ele decidiu que não seria deixado para trás outra vez.",
-                         "Mario ouviu um rugido ao longe. A corrida começou."};
-        float yy=h*.39f; for(String s:lines){c.drawText(s,w/2f,yy,p);yy+=h*.075f;}
-        p.setColor(Color.rgb(255,211,55));p.setFakeBoldText(true);
-        c.drawText("TOQUE PARA CONTINUAR",w/2f,h*.78f,p);
+        p.setColor(Color.rgb(24,28,35));p.setTextSize(Math.max(15,h*.029f));
+        c.drawText(cap[scene],l+pw/2,top+ph*.84f,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(18,h*.034f));
+        c.drawText("CAPÍTULO 1  •  A ÚLTIMA MONTARIA",w/2,h*.08f,p);
+        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(14,h*.027f));
+        c.drawText(scene<2?"TOQUE PARA O PRÓXIMO QUADRO":"TOQUE PARA CORRER",w/2,h*.83f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
     }
 
@@ -277,7 +297,7 @@ public class GameViewV4 extends GameView {
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
         if(storyIntro && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
-            if(storyPage==0)storyPage=1; else storyIntro=false;
+            if(storyPage<2)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen",true).apply();}
             return true;
         }
         return super.onTouchEvent(e);
