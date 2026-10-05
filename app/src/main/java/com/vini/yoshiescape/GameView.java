@@ -28,7 +28,7 @@ public class GameView extends View {
 
     public GameView(Context c){ super(c); setKeepScreenOn(true); px.setAntiAlias(false); px.setFilterBitmap(false); load(); level(); menu(); }
     Bitmap bm(int id){ return BitmapFactory.decodeResource(getResources(),id); }
-    void load(){ stand=bm(R.drawable.mario_stand); run[0]=bm(R.drawable.mario_run1); run[1]=bm(R.drawable.mario_run2); run[2]=bm(R.drawable.mario_run3); run[3]=bm(R.drawable.mario_run4); }
+    void load(){ stand=bm(com.vini.yoshiescape.R.drawable.mario_stand); run[0]=bm(com.vini.yoshiescape.R.drawable.mario_run1); run[1]=bm(com.vini.yoshiescape.R.drawable.mario_run2); run[2]=bm(com.vini.yoshiescape.R.drawable.mario_run3); run[3]=bm(com.vini.yoshiescape.R.drawable.mario_run4); }
     void ground(float a,float b){ solids.add(new RectF(a,GROUND,b,580)); }
     void plat(float a,float b,float w){ solids.add(new RectF(a,b,a+w,b+24)); }
     void level(){
@@ -43,7 +43,7 @@ public class GameView extends View {
     void start(){ state=PLAY;lap=0;lives=3;ringCount=0;score=0;x=START;y=GROUND-48;vx=vy=0;cam=0;safeX=x;safeY=y;safeT=0;inv=0;yActive=false;toStart=false;time=50;rank="C";for(Ring r:rings)r.got=false; last=System.nanoTime(); beep(ToneGenerator.TONE_PROP_BEEP,70); }
     public void resumeGameClock(){ last=System.nanoTime(); }
 
-    @Override protected void onDraw(Canvas c){ long n=System.nanoTime();float dt=(n-last)/1e9f;last=n;if(dt<=0||dt>.05f)dt=.016f;clock+=dt;if(playable())update(dt);draw(c);postInvalidateOnAnimation(); }
+    @Override protected void onDraw(Canvas c){ long n=System.nanoTime();float dt=(n-last)/1e9f;last=n;if(dt<=0||dt>.05f)dt=.016f;clock+=dt;if(playable())update(dt);render(c);postInvalidateOnAnimation(); }
     boolean playable(){ return state==PLAY||state==ESCAPE||state==HUNT; }
 
     void update(float dt){
@@ -73,7 +73,7 @@ public class GameView extends View {
     void hazard(){if(inv>0)return;for(RectF s:spikes)if(RectF.intersects(pr(),s)){if(ringCount>0){ringCount=Math.max(0,ringCount-Math.min(20,ringCount));inv=1.5f;vy=-360;vx=faceRight?-260:260;}else loseLife();beep(ToneGenerator.TONE_PROP_NACK,90);return;}}
     void loseLife(){lives--;if(lives<=0){state=OVER;yActive=false;vx=vy=0;return;}x=safeX;y=safeY;vx=vy=0;inv=1.5f;if(state==ESCAPE||state==HUNT)time=Math.max(0,time-3);}
 
-    void draw(Canvas c){int w=c.getWidth(),h=c.getHeight();if(w<=0||h<=0)return;if(state<=CREDITS){menuScene(c,w,h);if(state==MENU)menuUI(c,w,h);else info(c,w,h,state==HOW);return;}world(c,w,h);hud(c,w,h);if(playable())controls(c,w,h);if(state==LAP)lapUI(c,w,h);else if(state==WIN||state==OVER)result(c,w,h,state==OVER);}
+    void render(Canvas c){int w=c.getWidth(),h=c.getHeight();if(w<=0||h<=0)return;if(state<=CREDITS){menuScene(c,w,h);if(state==MENU)menuUI(c,w,h);else info(c,w,h,state==HOW);return;}world(c,w,h);hud(c,w,h);if(playable())controls(c,w,h);if(state==LAP)lapUI(c,w,h);else if(state==WIN||state==OVER)result(c,w,h,state==OVER);}
     void world(Canvas c,int w,int h){float sc=h/H;boolean crit=(state==ESCAPE||state==HUNT)&&time<=15;float danger=state==HUNT?1:crit?clamp((15-time)/15,0,1):0;p.setColor(blend(Color.rgb(78,171,242),Color.rgb(45,15,69),danger));c.drawRect(0,0,w,h*.55f,p);p.setColor(blend(Color.rgb(196,235,255),Color.rgb(174,38,47),danger));c.drawRect(0,h*.55f,w,h,p);mountains(c,w,h,danger);float sx=crit?(float)Math.sin(clock*38)*(1.5f+danger*3):0;c.save();c.scale(sc,sc);c.translate(-cam+sx,0);decor(c,danger);platforms(c,danger);rings(c);springs(c);spikes(c);startGate(c);goal(c);player(c);if(yActive)yoshi(c);c.restore();if(crit)danger(c,w,h,danger);}
     void mountains(Canvas c,int w,int h,float d){float sc=h/H;p.setColor(blend(Color.rgb(116,151,192),Color.rgb(48,31,74),d));for(int i=-2;i<9;i++){float q=(i*340-cam*.13f)*sc,b=h*.59f,pk=h*(.29f+(i%2==0?.03f:.09f));Path z=new Path();z.moveTo(q-230*sc,b);z.lineTo(q,pk);z.lineTo(q+230*sc,b);z.close();c.drawPath(z,p);}p.setColor(blend(Color.rgb(47,112,89),Color.rgb(29,24,49),d));for(int i=-2;i<18;i++)c.drawCircle((i*180-cam*.25f)*sc,h*.73f,125*sc,p);}
     void decor(Canvas c,float d){for(float q=180;q<WORLD;q+=370){p.setColor(blend(Color.rgb(36,116,48),Color.rgb(66,31,46),d));c.drawRect(q,415,q+5,GROUND,p);p.setColor(blend(Color.rgb(255,211,62),Color.rgb(245,66,60),d));c.drawRect(q-6,405,q+11,417,p);}}
