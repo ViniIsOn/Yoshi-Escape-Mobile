@@ -3,6 +3,7 @@ package com.vini.yoshiescape;
 import android.content.Context;
 import android.graphics.*;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.ToneGenerator;
 
