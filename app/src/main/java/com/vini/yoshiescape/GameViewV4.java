@@ -17,11 +17,12 @@ public class GameViewV4 extends GameView {
     private float yGrace4=0f;
     private boolean storyIntro=true;
     private int storyPage=0;
-    private final android.content.SharedPreferences prefs;
+    private android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
         super(c);
         ctx4=c.getApplicationContext();
+        prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
         playTrack(R.raw.escape_menu,true);
     }
 
