@@ -17,12 +17,15 @@ public class GameViewV4 extends GameView {
     private float yGrace4=0f;
     private boolean storyIntro=true;
     private int storyPage=0;
+    private int mapId=0;
+    private Bitmap storyYoshiRun,storyYoshiAngry,storyYoshiChase;
     private android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
         super(c);
         ctx4=c.getApplicationContext();
         prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
+        storyYoshiRun=yoshiRun; storyYoshiAngry=yoshiChase; storyYoshiChase=yoshiChase;
         playTrack(R.raw.escape_menu,true);
     }
 
@@ -127,8 +130,8 @@ public class GameViewV4 extends GameView {
 
     @Override void spawnYoshi(){
         yActive=true;
-        yGrace4=3.2f;
-        yspeed=255f;
+        yGrace4=1.4f;
+        yspeed=390f;
         yx=toStart?x+390f:x-390f;
         yy=GROUND-102f;
     }
@@ -138,16 +141,17 @@ public class GameViewV4 extends GameView {
         if(dir==0)dir=toStart?-1:1;
         if(yGrace4>0){
             yGrace4-=dt;
-            yx+=dir*180f*dt;
+            yx+=dir*240f*dt;
             yy=GROUND-104f+(float)Math.sin(clock*7f)*8f;
             return;
         }
-        yspeed=Math.min(610f,yspeed+62f*dt);
+        yspeed=Math.min(690f,yspeed+82f*dt);
         yx+=dir*yspeed*dt;
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
         RectF marioHit=new RectF(x+7,y+8,x+31,y+46);
         RectF yoshiHit=new RectF(yx+16,yy+13,yx+72,yy+69);
         if(RectF.intersects(marioHit,yoshiHit)){
+            deathCause="YOSHI";
             state=OVER;
             vx=vy=0;
             stopTrack();
@@ -190,49 +194,47 @@ public class GameViewV4 extends GameView {
 
     @Override void buildLevel(){
         solids.clear(); springs.clear(); spikes.clear(); rings.clear();
-
-        // ACT 1 - Meadow of Memories: readable jumps and two optional high routes.
-        ground(0,760); ground(875,1540); ground(1660,2360);
-        plat(430,365,190); plat(1010,350,220); plat(1280,300,165);
-        plat(1810,355,200); plat(2070,305,165);
-        springs.add(new RectF(715,GROUND-20,763,GROUND));
-        springs.add(new RectF(1515,GROUND-20,1563,GROUND));
-        spikes.add(new RectF(1370,GROUND-18,1412,GROUND));
-        lineRings(220,700,72,392); arcRings(900,7,72,385,92);
-        lineRings(1700,2280,76,392);
-
-        // ACT 2 - Forgotten Ruins: pillars and alternating upper/lower routes.
-        ground(2470,3200); ground(3330,4010); ground(4135,4680);
-        plat(2570,370,150); plat(2790,320,175); plat(3050,270,150);
-        plat(3430,350,190); plat(3710,295,185);
-        plat(4220,350,180); plat(4470,300,160);
-        springs.add(new RectF(3160,GROUND-20,3208,GROUND));
-        springs.add(new RectF(3980,GROUND-20,4028,GROUND));
-        spikes.add(new RectF(2860,GROUND-18,2902,GROUND));
-        spikes.add(new RectF(3830,GROUND-18,3872,GROUND));
-        arcRings(2500,8,70,390,105); lineRings(3360,3940,76,392);
-        arcRings(4160,7,70,388,88);
-
-        // ACT 3 - Yoshi's Rift: faster finale, generous landing zones.
-        ground(4800,5350); ground(5465,WORLD);
-        plat(4880,350,190); plat(5160,292,170);
-        plat(5580,345,190);
-        springs.add(new RectF(5310,GROUND-20,5358,GROUND));
-        spikes.add(new RectF(5050,GROUND-18,5092,GROUND));
-        lineRings(4740,5260,72,392); arcRings(5450,7,70,386,96);
+        if(mapId==0){
+            // MAP 1 - Meadow of Memories: open, readable and fast.
+            ground(0,920); ground(1035,1860); ground(1990,2920); ground(3050,4040); ground(4160,5050); ground(5170,WORLD);
+            plat(520,355,190); plat(1210,330,210); plat(1600,285,170); plat(2310,350,220); plat(3500,340,220); plat(4550,325,210);
+            springs.add(new RectF(860,GROUND-20,908,GROUND)); springs.add(new RectF(4000,GROUND-20,4048,GROUND));
+            spikes.add(new RectF(2670,GROUND-18,2712,GROUND));
+            lineRings(220,850,74,392); arcRings(1080,7,74,385,92); lineRings(2050,2850,80,392); arcRings(4200,8,74,386,96);
+        }else if(mapId==1){
+            // MAP 2 - Forgotten Ruins: vertical routes, ruins and safe telegraphing.
+            ground(0,690); ground(830,1460); ground(1600,2260); ground(2400,3180); ground(3330,3980); ground(4130,4800); ground(4950,WORLD);
+            plat(300,345,170); plat(930,370,150); plat(1130,310,155); plat(1690,350,180); plat(1940,285,165);
+            plat(2520,365,170); plat(2760,305,180); plat(3440,350,190); plat(3720,290,180); plat(4260,335,190); plat(4540,275,165); plat(5300,335,210);
+            springs.add(new RectF(650,GROUND-20,698,GROUND)); springs.add(new RectF(3140,GROUND-20,3188,GROUND)); springs.add(new RectF(4760,GROUND-20,4808,GROUND));
+            spikes.add(new RectF(1810,GROUND-18,1848,GROUND)); spikes.add(new RectF(3590,GROUND-18,3628,GROUND));
+            arcRings(120,8,70,388,100); lineRings(900,1400,70,390); arcRings(1640,8,70,386,110); lineRings(2440,3120,76,390); arcRings(4160,8,72,385,105);
+        }else{
+            // MAP 3 - Yoshi's Rift: chase-focused finale, long sight lines and escape ramps.
+            ground(0,1120); ground(1240,2110); ground(2240,3150); ground(3270,4210); ground(4340,5220); ground(5350,WORLD);
+            plat(650,350,210); plat(1420,320,220); plat(1800,270,180); plat(2490,340,230); plat(2880,285,180);
+            plat(3510,330,230); plat(3910,275,190); plat(4580,325,220); plat(4930,270,180); plat(5520,330,220);
+            springs.add(new RectF(1070,GROUND-20,1118,GROUND)); springs.add(new RectF(3100,GROUND-20,3148,GROUND)); springs.add(new RectF(5170,GROUND-20,5218,GROUND));
+            spikes.add(new RectF(2000,GROUND-18,2038,GROUND)); spikes.add(new RectF(4040,GROUND-18,4078,GROUND));
+            lineRings(180,1040,76,392); arcRings(1280,9,70,386,115); lineRings(2300,3080,78,390); arcRings(3320,9,70,385,112); lineRings(4400,5150,76,390);
+        }
     }
 
     @Override void drawDecor(Canvas c,float d){
-        // Landmarks make each third of the stage feel like a different place.
         super.drawDecor(c,d);
-        for(float q=2500;q<4680;q+=330){
+        if(mapId==0){
+            for(float q=700;q<WORLD;q+=900){p.setColor(Color.rgb(60,145,65));c.drawCircle(q,380,32,p);}
+        }else if(mapId==1){
+        for(float q=250;q<WORLD;q+=330){
             p.setColor(blend(Color.rgb(95,101,115),Color.rgb(75,39,55),d));
             c.drawRect(q,330,q+34,GROUND,p);
             c.drawRect(q-18,326,q+52,342,p);
         }
-        for(float q=4860;q<WORLD;q+=280){
+        }else{
+        for(float q=220;q<WORLD;q+=280){
             p.setColor(Color.argb(145,120,42,170));
             c.drawCircle(q,365+(float)Math.sin(q)*18,22,p);
+        }
         }
     }
 
@@ -250,45 +252,45 @@ public class GameViewV4 extends GameView {
 
     @Override void start(){
         super.start();
-        storyIntro=!prefs.getBoolean("prologue_seen",false); storyPage=0;
+        mapId=0; buildLevel();
+        storyIntro=!prefs.getBoolean("prologue_seen_v08",false); storyPage=0;
         playTrack(R.raw.run_you_fool,true);
     }
 
     private void drawStory(Canvas c){
         int w=c.getWidth(),h=c.getHeight();
-        p.setColor(Color.rgb(10,13,24));c.drawRect(0,0,w,h,p);
-        float gap=12, top=h*.12f, ph=h*.58f, pw=(w-gap*4)/3f;
+        p.setColor(Color.rgb(8,12,22));c.drawRect(0,0,w,h,p);
+        float l=w*.12f,r=w*.88f,t=h*.12f,b=h*.76f;
+        p.setColor(Color.rgb(238,235,215));c.drawRoundRect(l,t,r,b,18,18,p);
+        p.setColor(storyPage<3?Color.rgb(82,170,92):Color.rgb(62,42,86));c.drawRect(l+12,t+12,r-12,b-70,p);
 
-        for(int i=0;i<3;i++){
-            float l=gap+(pw+gap)*i;
-            p.setColor(i==storyPage%3?Color.rgb(245,245,225):Color.rgb(205,210,205));
-            c.drawRoundRect(l,top,l+pw,top+ph,12,12,p);
-            p.setColor(Color.rgb(65,145,90));
-            c.drawRect(l+8,top+8,l+pw-8,top+ph*.68f,p);
-        }
-
-        // Comic action panels: Mario jumps, Yoshi is left at an edge,
-        // then the remembered chase begins. Short captions keep it visual.
-        int scene=storyPage;
-        float l=gap+(pw+gap)*(scene%3);
-        if(scene==0){
-            drawBitmapAspect(c,marioJump,new RectF(l+pw*.52f,top+45,l+pw*.82f,top+ph*.55f),false,true);
-            drawBitmapAspect(c,yoshiRun,new RectF(l+pw*.15f,top+ph*.38f,l+pw*.48f,top+ph*.66f),false,false);
-        }else if(scene==1){
-            drawBitmapAspect(c,marioJump,new RectF(l+pw*.65f,top+35,l+pw*.93f,top+ph*.5f),false,true);
-            drawBitmapAspect(c,yoshiRun,new RectF(l+pw*.12f,top+ph*.42f,l+pw*.45f,top+ph*.7f),true,false);
+        Bitmap yb=storyPage<2?storyYoshiRun:storyPage<4?storyYoshiAngry:storyYoshiChase;
+        if(storyPage==0){
+            drawBitmapAspect(c,yb,new RectF(w*.23f,h*.38f,w*.43f,h*.68f),false,true);
+            drawBitmapAspect(c,marioJump,new RectF(w*.58f,h*.22f,w*.72f,h*.58f),false,true);
+        }else if(storyPage==1){
+            drawBitmapAspect(c,yb,new RectF(w*.20f,h*.34f,w*.42f,h*.69f),false,true);
+            drawBitmapAspect(c,marioJump,new RectF(w*.67f,h*.18f,w*.80f,h*.48f),false,true);
+        }else if(storyPage==2){
+            drawBitmapAspect(c,yb,new RectF(w*.39f,h*.25f,w*.61f,h*.67f),false,true);
+        }else if(storyPage==3){
+            drawBitmapAspect(c,yb,new RectF(w*.18f,h*.28f,w*.42f,h*.68f),false,true);
+            drawBitmapAspect(c,marioStand,new RectF(w*.66f,h*.37f,w*.76f,h*.67f),true,true);
+        }else if(storyPage==4){
+            drawBitmapAspect(c,yb,new RectF(w*.16f,h*.28f,w*.42f,h*.68f),false,true);
+            drawBitmapAspect(c,marioRun[2],new RectF(w*.65f,h*.37f,w*.76f,h*.68f),false,true);
+            p.setColor(Color.WHITE);for(int i=0;i<4;i++)c.drawRect(w*.48f+i*28,h*.47f,w*.48f+i*28+18,h*.48f,p);
         }else{
-            drawBitmapAspect(c,yoshiChase,new RectF(l+pw*.28f,top+30,l+pw*.78f,top+ph*.66f),false,false);
+            drawBitmapAspect(c,yb,new RectF(w*.28f,h*.20f,w*.57f,h*.69f),false,true);
+            drawBitmapAspect(c,marioRun[3],new RectF(w*.68f,h*.39f,w*.79f,h*.69f),false,true);
         }
 
-        String[] cap={"OUTRO SALTO...","DE NOVO NÃO.","AGORA É MINHA VEZ."};
-        p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);
-        p.setColor(Color.rgb(24,28,35));p.setTextSize(Math.max(15,h*.029f));
-        c.drawText(cap[scene],l+pw/2,top+ph*.84f,p);
-        p.setColor(Color.WHITE);p.setTextSize(Math.max(18,h*.034f));
-        c.drawText("CAPÍTULO 1  •  A ÚLTIMA MONTARIA",w/2,h*.08f,p);
-        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(14,h*.027f));
-        c.drawText(scene<2?"TOQUE PARA O PRÓXIMO QUADRO":"TOQUE PARA CORRER",w/2,h*.83f,p);
+        String[] cap={"Mais um salto impossível.","Mario salta. Yoshi fica para trás.","...ele se lembra de todos os outros.","Um rugido ecoa nas ruínas.","Mario corre. Yoshi não para.","A ÚLTIMA MONTARIA começa agora."};
+        p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setColor(Color.rgb(25,29,35));p.setTextSize(Math.max(16,h*.034f));
+        c.drawText(cap[storyPage],w/2,b-27,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(18,h*.038f));c.drawText("PRÓLOGO  •  "+(storyPage+1)+"/6",w/2,h*.08f,p);
+        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(14,h*.028f));
+        c.drawText(storyPage<5?"TOQUE PARA AVANÇAR":"TOQUE PARA CORRER",w/2,h*.86f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
     }
 
@@ -299,10 +301,15 @@ public class GameViewV4 extends GameView {
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
         if(storyIntro && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
-            if(storyPage<2)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen",true).apply();}
+            if(storyPage<5)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen_v08",true).apply();}
             return true;
         }
         return super.onTouchEvent(e);
+    }
+
+    @Override void nextLap(){
+        if(lap==1){mapId=1;buildLevel();beginLap(2,false);}
+        else {mapId=2;buildLevel();beginLap(3,true);}
     }
 
     @Override void lapDone(){
