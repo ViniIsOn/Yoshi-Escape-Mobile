@@ -44,9 +44,16 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        if (gameView instanceof GameViewV4) ((GameViewV4) gameView).pauseMusic();
+        super.onPause();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         hideSystemUi();
         if (gameView != null) gameView.resumeGameClock();
+        if (gameView instanceof GameViewV4) ((GameViewV4) gameView).resumeMusic();
     }
 }
