@@ -12,7 +12,8 @@ public class GameViewV4 extends GameView {
     private MediaPlayer bgm;
     private int currentTrack=0;
     private boolean bgmLoop=false;
-    private boolean appPaused=false;\n    private int loopStartMs=0;
+    private boolean appPaused=false;
+    private int loopStartMs=0;
     private float yGrace4=0f;
 
     public GameViewV4(Context c){
@@ -33,7 +34,17 @@ public class GameViewV4 extends GameView {
         }
     }
 
-    private int loopPoint(int res){\n        // Skip the intro on repeats so looping sounds like a continuation.\n        if(res==R.raw.escape_menu)return 4200;\n        if(res==R.raw.run_you_fool)return 6100;\n        if(res==R.raw.escape_final_v2)return 4300;\n        if(res==R.raw.escape_lap2)return 3100;\n        if(res==R.raw.die)return 5200;\n        return 0;\n    }\n\n    private void playTrack(int res,boolean loop){
+    private int loopPoint(int res){
+        // Skip the intro on repeats so looping sounds like a continuation.
+        if(res==R.raw.escape_menu)return 4200;
+        if(res==R.raw.run_you_fool)return 6100;
+        if(res==R.raw.escape_final_v2)return 4300;
+        if(res==R.raw.escape_lap2)return 3100;
+        if(res==R.raw.die)return 5200;
+        return 0;
+    }
+
+    private void playTrack(int res,boolean loop){
         if(!sound||ctx4==null)return;
         if(bgm!=null && currentTrack==res){
             bgmLoop=loop;
