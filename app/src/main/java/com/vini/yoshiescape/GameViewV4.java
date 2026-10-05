@@ -100,12 +100,6 @@ public class GameViewV4 extends GameView {
         if(ctx4!=null)playTrack(R.raw.escape_menu,true);
     }
 
-    @Override void start(){
-        super.start();
-        // Normal run before the escape laps.
-        playTrack(R.raw.run_you_fool,true);
-    }
-
     @Override void beginLap(int l,boolean left){
         super.beginLap(l,left);
         // Requested order: EscapeFinalV2 is the first escape lap.
