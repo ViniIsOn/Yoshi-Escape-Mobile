@@ -30,42 +30,28 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Decode game music
+      - name: Prepare original OGG music
         shell: bash
         run: |
-          python3 - <<'PY'
-          import base64, re
-          from pathlib import Path
+          RAW="app/src/main/res/raw"
 
-          raw = Path('app/src/main/res/raw')
-          tracks = ('escape_menu', 'run_you_fool', 'escape_lap2')
+          # Keep the uploaded originals in Git, but give Android-valid
+          # lowercase resource names inside the Actions workspace.
+          mv "$RAW/EscapeMenu.ogg" "$RAW/escape_menu.ogg"
+          mv "$RAW/EscapeFinalV2.ogg" "$RAW/escape_final_v2.ogg"
+          mv "$RAW/EscapeLap2.ogg" "$RAW/escape_lap2.ogg"
+          mv "$RAW/RunYouFool.ogg" "$RAW/run_you_fool.ogg"
+          mv "$RAW/Timeisup.ogg" "$RAW/time_is_up.ogg"
 
-          for stem in tracks:
-              src = raw / f'{stem}.b64'
-              dst = raw / f'{stem}.mp3'
-              if not src.exists():
-                  if dst.exists():
-                      print(f'{stem}: MP3 already present')
-                      continue
-                  raise FileNotFoundError(f'Missing {src}')
+          # Remove the old truncated/converted audio sources from the build.
+          rm -f "$RAW/escape_menu.b64" "$RAW/escape_lap2.b64" "$RAW/run_you_fool.b64" "$RAW/die.mp3"
 
-              text = src.read_text(encoding='utf-8-sig', errors='ignore')
-              data = ''.join(re.findall(r'[A-Za-z0-9+/=]', text))
-              data = data.replace('=', '')
-              data += '=' * (-len(data) % 4)
-              decoded = base64.b64decode(data, validate=False)
-
-              if not decoded:
-                  raise RuntimeError(f'{src} decoded to an empty file')
-
-              dst.write_bytes(decoded)
-              print(f'{stem}: {len(decoded)} bytes -> {dst}')
-
-              # Android resource names ignore the extension, so keeping
-              # both stem.b64 and stem.mp3 in res/raw creates duplicates.
-              src.unlink()
-              print(f'{stem}: removed temporary Base64 source')
-          PY
+          test -s "$RAW/escape_menu.ogg"
+          test -s "$RAW/escape_final_v2.ogg"
+          test -s "$RAW/escape_lap2.ogg"
+          test -s "$RAW/run_you_fool.ogg"
+          test -s "$RAW/time_is_up.ogg"
+          test -s "$RAW/die.ogg"
 
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
@@ -78,6 +64,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Yoshi-Escape-Mobile-v0.4-beta
+          name: Yoshi-Escape-Mobile-v0.5-audio-fix
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
