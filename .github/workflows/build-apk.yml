@@ -53,6 +53,30 @@ jobs:
           test -s "$RAW/time_is_up.ogg"
           test -s "$RAW/die.ogg"
 
+      - name: Prepare real launcher icon
+        shell: bash
+        run: |
+          # Build a real raster launcher icon from the existing Yoshi artwork.
+          # This avoids launchers falling back to Android's generic icon.
+          SRC="app/src/main/res/drawable/yoshi.png"
+          if [ -f "$SRC" ]; then
+            mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
+            if command -v convert >/dev/null 2>&1; then
+              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 48x48   app/src/main/res/mipmap-mdpi/ic_launcher.png
+              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
+              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
+              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+              cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+              cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+              cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+              cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+              cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            else
+              echo "ImageMagick convert not available; keeping adaptive icon resources."
+            fi
+          fi
+
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -64,6 +88,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Yoshi-Escape-Mobile-v0.5-audio-fix
+          name: Yoshi-Escape-Mobile-v0.8.2-yoshi-icon-fix
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
