@@ -18,14 +18,13 @@ public class GameViewV4 extends GameView {
     private boolean storyIntro=true;
     private int storyPage=0;
     private int mapId=0;
-    private Bitmap storyYoshiRun,storyYoshiAngry,storyYoshiChase;
+    
     private android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
         super(c);
         ctx4=c.getApplicationContext();
         prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
-        storyYoshiRun=yoshiRun; storyYoshiAngry=yoshiChase; storyYoshiChase=yoshiChase;
         playTrack(R.raw.escape_menu,true);
     }
 
@@ -148,9 +147,13 @@ public class GameViewV4 extends GameView {
         yspeed=Math.min(690f,yspeed+82f*dt);
         yx+=dir*yspeed*dt;
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
-        RectF marioHit=new RectF(x+7,y+8,x+31,y+46);
-        RectF yoshiHit=new RectF(yx+16,yy+13,yx+72,yy+69);
-        if(RectF.intersects(marioHit,yoshiHit)){
+        // Capture is tied to the visible sprite centers, not a broad invisible box.
+        float marioCx=x+18f, marioCy=y+27f;
+        float yoshiCx=yx+43f, yoshiCy=yy+40f;
+        float catchDx=Math.abs(marioCx-yoshiCx);
+        float catchDy=Math.abs(marioCy-yoshiCy);
+        boolean yoshiVisible=(yoshiChase!=null||yoshiRun!=null);
+        if(yoshiVisible && catchDx<25f && catchDy<34f){
             deathCause="YOSHI";
             state=OVER;
             vx=vy=0;
@@ -264,7 +267,10 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.rgb(238,235,215));c.drawRoundRect(l,t,r,b,18,18,p);
         p.setColor(storyPage<3?Color.rgb(82,170,92):Color.rgb(62,42,86));c.drawRect(l+12,t+12,r-12,b-70,p);
 
-        Bitmap yb=storyPage<2?storyYoshiRun:storyPage<4?storyYoshiAngry:storyYoshiChase;
+        Bitmap yb;
+        if(storyPage<2) yb=yoshiRun;
+        else if(storyPage<4) yb=(yoshiChase!=null?yoshiChase:yoshiRun);
+        else yb=(yoshiFly!=null?yoshiFly:(yoshiChase!=null?yoshiChase:yoshiRun));
         if(storyPage==0){
             drawBitmapAspect(c,yb,new RectF(w*.23f,h*.38f,w*.43f,h*.68f),false,true);
             drawBitmapAspect(c,marioJump,new RectF(w*.58f,h*.22f,w*.72f,h*.58f),false,true);
