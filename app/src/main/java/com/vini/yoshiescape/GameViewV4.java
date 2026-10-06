@@ -133,9 +133,9 @@ public class GameViewV4 extends GameView {
 
     @Override void spawnYoshi(){
         yActive=true;
-        yGrace4=1.4f;
-        yspeed=390f;
-        yx=toStart?x+390f:x-390f;
+        yGrace4=1.8f;
+        yspeed=285f;
+        yx=toStart?Math.min(WORLD-120,x+470f):Math.max(30f,x-470f);
         yy=GROUND-102f;
     }
 
@@ -148,16 +148,19 @@ public class GameViewV4 extends GameView {
             yy=GROUND-104f+(float)Math.sin(clock*7f)*8f;
             return;
         }
-        yspeed=Math.min(690f,yspeed+82f*dt);
+        // Mario reaches 405 while running. Yoshi stays slightly slower by
+        // default, so skill can create distance. Short boosts add pressure
+        // without teleporting or making the chase mathematically unwinnable.
+        float gap=Math.abs(x-yx);
+        float targetSpeed=335f;
+        if(gap>330f) targetSpeed=375f;
+        else if(gap<125f) targetSpeed=315f;
+        yspeed+=(targetSpeed-yspeed)*Math.min(1f,dt*2.2f);
         yx+=dir*yspeed*dt;
 
-        // Chase failsafe: Yoshi must never be logically active but lost far
-        // outside the playable camera. Re-enter from the pursuit side.
-        if(Float.isNaN(yx) || Float.isInfinite(yx) || Math.abs(yx-x)>500f){
-            yx=toStart?x+430f:x-430f;
-            yy=GROUND-94f;
-            yGrace4=.65f;
-        }
+        // Never reposition Yoshi. Clamp only to world boundaries.
+        if(Float.isNaN(yx)||Float.isInfinite(yx)) yx=toStart?WORLD-120f:30f;
+        yx=clamp(yx,20f,WORLD-100f);
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
         // Collision follows the rectangles actually drawn on screen.
         // Both are inset so transparent edges do not count as a hit.
