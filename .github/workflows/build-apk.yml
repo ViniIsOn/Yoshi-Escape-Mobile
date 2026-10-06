@@ -56,33 +56,35 @@ jobs:
       - name: Prepare real launcher icon
         shell: bash
         run: |
-          # Build a real raster launcher icon from the existing Yoshi artwork.
-          # This avoids launchers falling back to Android's generic icon.
           SRC="app/src/main/res/drawable-nodpi/yoshi.png"
-          if [ ! -f "$SRC" ]; then echo "Missing launcher source: $SRC"; exit 1; fi
-          if [ -f "$SRC" ]; then
-            # Android 8+ would otherwise prefer the old adaptive XML and hide
-            # the generated raster icon on modern launchers.
-            rm -f app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-            rm -f app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-            rm -f app/src/main/res/mipmap/ic_launcher.xml
-            rm -f app/src/main/res/mipmap/ic_launcher_round.xml
-            mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
-            if command -v convert >/dev/null 2>&1; then
-              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 48x48   app/src/main/res/mipmap-mdpi/ic_launcher.png
-              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
-              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
-              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-              convert "$SRC" -gravity center -crop 78%x78%+0+0 +repage -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-              cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-              cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-              cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-              cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-              cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-            else
-              echo "ImageMagick convert not available; keeping adaptive icon resources."
-            fi
-          fi
+          test -f "$SRC" || { echo "Missing launcher source: $SRC"; exit 1; }
+
+          # Use Android resource XMLs that reference the verified Yoshi PNG.
+          # This does not depend on ImageMagick being installed on the runner.
+          mkdir -p app/src/main/res/mipmap app/src/main/res/mipmap-anydpi-v26
+
+          cat > app/src/main/res/mipmap/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@drawable/launcher_bg"/>
+              <item android:left="14dp" android:top="14dp" android:right="14dp" android:bottom="14dp">
+                  <bitmap android:src="@drawable/yoshi" android:gravity="center"/>
+              </item>
+          </layer-list>
+          EOF
+          cp app/src/main/res/mipmap/ic_launcher.xml app/src/main/res/mipmap/ic_launcher_round.xml
+
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/launcher_bg"/>
+              <foreground android:drawable="@drawable/launcher_yoshi"/>
+          </adaptive-icon>
+          EOF
+          cp app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          test -f app/src/main/res/mipmap/ic_launcher.xml
+          test -f app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
