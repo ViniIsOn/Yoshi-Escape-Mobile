@@ -19,6 +19,8 @@ public class GameViewV4 extends GameView {
     private int storyPage=0;
     private int mapId=0;
     private boolean mapSelect=false;
+    private int unlockedMap=0;
+    private boolean courseComplete=false;
     private float yoshiVy=0f;
     private boolean yoshiGrounded=true;
     
@@ -328,7 +330,7 @@ public class GameViewV4 extends GameView {
     @Override void start(){
         super.start();
         mapId=0; buildLevel();
-        storyIntro=!prefs.getBoolean("prologue_seen_v08",false); storyPage=0;
+        storyIntro=!prefs.getBoolean("prologue_seen_v11",false); storyPage=0;
         playTrack(R.raw.run_you_fool,true);
     }
 
@@ -382,14 +384,15 @@ public class GameViewV4 extends GameView {
         float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
         for(int i=0;i<5;i++){
             float px=w*pos[i][0],py=h*pos[i][1];
-            p.setColor(i==4?Color.rgb(145,65,168):Color.rgb(245,214,64));c.drawCircle(px,py,26,p);
+            p.setColor(locked?Color.rgb(85,92,105):(i==4?Color.rgb(145,65,168):Color.rgb(245,214,64)));c.drawCircle(px,py,26,p);
             p.setColor(Color.rgb(25,32,42));c.drawCircle(px,py,17,p);
-            drawBitmapAspect(c,marioStand,new RectF(px-16,py-34,px+16,py+8),false,true);
+            if(!locked)drawBitmapAspect(c,marioStand,new RectF(px-16,py-34,px+16,py+8),false,true);
+            else {p.setColor(Color.WHITE);p.setTextSize(18);c.drawText("X",px,py+6,p);}
             p.setTextSize(Math.max(11,h*.022f));p.setColor(Color.WHITE);c.drawText((i+1)+"",px,py+48,p);
             c.drawText(names[i],px,py+68,p);
             if(i<4){p.setColor(Color.WHITE);p.setStrokeWidth(5);c.drawLine(px+30,py,w*pos[i+1][0]-30,h*pos[i+1][1],p);}
         }
-        p.setTextSize(Math.max(13,h*.026f));p.setColor(Color.WHITE);c.drawText("TOQUE EM UM PONTO • ◀ VOLTAR",w/2f,h*.90f,p);
+        p.setTextSize(Math.max(13,h*.026f));p.setColor(Color.WHITE);c.drawText("FASE BLOQUEADA = X   •   TOQUE PARA JOGAR",w/2f,h*.90f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
@@ -397,7 +400,8 @@ public class GameViewV4 extends GameView {
         mapSelect=false;
         start();
         mapId=id;buildLevel();
-        storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v08",false);
+        prefs.edit().putInt("last_map_v11",id).apply();
+        storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v11",false);
     }
 
     @Override void render(Canvas c){
@@ -410,42 +414,30 @@ public class GameViewV4 extends GameView {
         if(mapSelect && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
             float tx=e.getX(),ty=e.getY(),w=getWidth(),h=getHeight();
             float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
-            for(int i=0;i<5;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<70*70){startSelectedMap(i);return true;}}
+            for(int i=0;i<5;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<70*70){if(i<=unlockedMap)startSelectedMap(i);else beep(ToneGenerator.TONE_PROP_NACK,90);return true;}}
             if(ty>h*.82f){mapSelect=false;return true;}
             return true;
         }
         if(storyIntro && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
-            if(storyPage<5)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen_v08",true).apply();}
+            if(storyPage<5)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen_v11",true).apply();}
             return true;
         }
         return super.onTouchEvent(e);
     }
 
     @Override void nextLap(){
-        if(lap==1){mapId=(mapId+1)%5;buildLevel();beginLap(2,false);}
-        else {mapId=(mapId+1)%5;buildLevel();beginLap(3,true);}
+        if(lap<3){
+            beginLap(lap+1,lap+1>=3);
+            return;
+        }
+        courseComplete=true;
+        int next=Math.min(4,mapId+1);
+        if(next>unlockedMap){
+            unlockedMap=next;
+            prefs.edit().putInt("unlocked_map_v11",unlockedMap).apply();
+        }
+        state=MENU; stopTrack(); playTrack(R.raw.escape_menu,true);
+        mapSelect=true;
     }
 
-    @Override void lapDone(){
-        super.lapDone();
-        if(state==WIN)stopTrack();
-    }
 
-    @Override void finish(){
-        super.finish();
-        stopTrack();
-    }
-
-    @Override void menuTap(float x,float y){
-        float h=getHeight(),w=getWidth(),ch=Math.min(270,h*.52f),t=h*.42f,row=(ch-85)/3;
-        float first=t+58;
-        if(Math.abs(y-first)<30&&x>w*.27f&&x<w*.73f){mapSelect=true;return;}
-        boolean before=sound;super.menuTap(x,y);
-        if(before!=sound){if(sound&&state==MENU)playTrack(R.raw.escape_menu,true);else if(!sound)stopTrack();}
-    }
-
-    @Override protected void onDetachedFromWindow(){
-        stopTrack();
-        super.onDetachedFromWindow();
-    }
-}
