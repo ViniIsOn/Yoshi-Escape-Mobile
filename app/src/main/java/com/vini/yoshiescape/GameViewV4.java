@@ -303,11 +303,85 @@ public class GameViewV4 extends GameView {
             ringArc(120,9,72,390,110); ringArc(1040,9,72,390,105); ringRow(2020,2760,76,390);
             ringArc(3020,9,72,390,110); ringRow(4100,4860,76,390); ringArc(5140,8,72,390,100);
         }
+        // Extra hand-placed rhythm section so courses do not feel like short test rooms.
+        if(mapId==0){plat(5050,300,180);ringArc(5120,7,66,382,72);}
+        else if(mapId==1){plat(5350,285,190);ringArc(5350,7,65,370,80);}
+        else if(mapId==2){plat(5450,270,180);ringArc(5400,7,64,360,86);}
+        else if(mapId==3){plat(5200,270,190);ringArc(5230,8,62,355,92);}
+        else if(mapId==4){plat(5400,255,190);ringArc(5350,8,62,350,96);}
+        else {plat(5350,250,200);ringArc(5300,8,60,345,105);}
     }
 
     private boolean hasGroundAt(float q){
         for(RectF s:solids) if(q>=s.left+10 && q<=s.right-10 && Math.abs(s.top-GROUND)<2) return true;
         return false;
+    }
+
+    @Override void world(Canvas c,int w,int h){
+        float sc=h/H;
+        boolean crit=(state==ESCAPE||state==HUNT)&&time<=15;
+        float danger=state==HUNT?1:crit?clamp((15-time)/15,0,1):0;
+        int[][] sky={{96,190,242},{35,91,82},{124,190,232},{47,40,74},{92,45,128},{104,28,34}};
+        int[][] low={{194,239,217},{27,67,55},{215,239,249},{63,55,77},{56,25,79},{45,20,25}};
+        int si=Math.max(0,Math.min(5,mapId));
+        int skyC=Color.rgb(sky[si][0],sky[si][1],sky[si][2]);
+        int lowC=Color.rgb(low[si][0],low[si][1],low[si][2]);
+        p.setColor(blend(skyC,Color.rgb(28,10,42),danger));c.drawRect(0,0,w,h*.60f,p);
+        p.setColor(blend(lowC,Color.rgb(105,25,35),danger));c.drawRect(0,h*.60f,w,h,p);
+        drawStageBackground(c,w,h,danger);
+
+        float shake=crit?(float)Math.sin(clock*35)*(1.2f+danger*2.3f):0;
+        c.save();c.scale(sc,sc);c.translate(-cam+shake,0);
+        drawDecor(c,danger); drawPlatforms(c,danger); drawRings(c); drawSprings(c); drawSpikes(c);
+        drawStart(c); drawGoal(c); drawPlayer(c); if(yActive)drawYoshi(c);
+        c.restore();
+        if(crit)dangerOverlay(c,w,h,danger);
+    }
+
+    private void drawStageBackground(Canvas c,int w,int h,float d){
+        float sc=h/H,t=(float)clock;
+        int id=Math.max(0,Math.min(5,mapId));
+        if(id==0){
+            p.setColor(blend(Color.rgb(83,151,105),Color.rgb(45,31,59),d));
+            for(int i=-2;i<12;i++){float q=(i*300-cam*.10f)*sc;Path z=new Path();z.moveTo(q-190*sc,h*.66f);z.lineTo(q,h*.30f);z.lineTo(q+190*sc,h*.66f);z.close();c.drawPath(z,p);}
+            p.setColor(blend(Color.rgb(39,112,67),Color.rgb(34,25,47),d));for(int i=-2;i<22;i++)c.drawCircle((i*150-cam*.22f)*sc,h*.74f,95*sc,p);
+        }else if(id==1){
+            p.setColor(blend(Color.rgb(16,52,43),Color.rgb(37,19,48),d));for(int i=-1;i<18;i++){float q=(i*210-cam*.17f)*sc;c.drawRect(q,h*.18f,q+32*sc,h*.72f,p);c.drawCircle(q+16*sc,h*.18f,72*sc,p);}
+            p.setColor(Color.argb(90,255,194,73));for(int i=0;i<10;i++){float q=(i*260-cam*.28f)*sc;c.drawCircle(q,h*(.25f+.12f*(i%3)),5*sc,p);}
+        }else if(id==2){
+            p.setColor(blend(Color.rgb(207,232,248),Color.rgb(68,52,86),d));for(int i=-2;i<13;i++){float q=(i*280-cam*.11f)*sc;Path z=new Path();z.moveTo(q-150*sc,h*.68f);z.lineTo(q,h*.20f);z.lineTo(q+150*sc,h*.68f);z.close();c.drawPath(z,p);}
+            p.setColor(Color.argb(155,240,250,255));for(int i=0;i<34;i++){float q=((i*97+(t*18)%97)-cam*.05f)*sc;c.drawCircle(q,h*((i*37)%100)/100f,2.5f*sc,p);}
+        }else if(id==3){
+            p.setColor(blend(Color.rgb(31,28,48),Color.rgb(55,17,33),d));for(int i=-1;i<14;i++){float q=(i*260-cam*.12f)*sc;c.drawRect(q,h*.32f,q+145*sc,h*.73f,p);c.drawRect(q+28*sc,h*.22f,q+54*sc,h*.73f,p);}
+            p.setColor(Color.argb(120,244,94,48));for(int i=0;i<12;i++)c.drawCircle((i*240-cam*.2f)*sc,h*.63f,8*sc,p);
+        }else if(id==4){
+            p.setColor(blend(Color.rgb(70,31,104),Color.rgb(26,15,43),d));for(int i=-2;i<14;i++){float q=(i*300-cam*.13f)*sc;Path z=new Path();z.moveTo(q-130*sc,h*.66f);z.lineTo(q,h*.29f);z.lineTo(q+130*sc,h*.66f);z.close();c.drawPath(z,p);}
+            p.setColor(Color.argb(105,224,116,255));for(int i=0;i<18;i++)c.drawCircle((i*170-cam*.25f)*sc,h*(.25f+.3f*((i%4)/4f)),5*sc,p);
+        }else{
+            p.setColor(blend(Color.rgb(54,20,26),Color.rgb(20,8,20),d));for(int i=-1;i<13;i++){float q=(i*310-cam*.10f)*sc;c.drawRect(q,h*.38f,q+180*sc,h*.73f,p);c.drawRect(q+55*sc,h*.22f,q+90*sc,h*.73f,p);}
+            p.setColor(Color.argb(130,255,80,34));for(int i=0;i<14;i++){float q=(i*220-cam*.2f)*sc;c.drawCircle(q,h*.66f,10*sc,p);}
+        }
+    }
+
+    @Override void drawPlatforms(Canvas c,float d){
+        int id=Math.max(0,Math.min(5,mapId));
+        int[] body={Color.rgb(125,72,38),Color.rgb(48,70,55),Color.rgb(115,151,171),Color.rgb(58,55,67),Color.rgb(78,42,101),Color.rgb(72,43,42)};
+        int[] body2={Color.rgb(93,57,35),Color.rgb(31,48,39),Color.rgb(76,112,137),Color.rgb(37,36,46),Color.rgb(51,28,73),Color.rgb(43,28,29)};
+        int[] top={Color.rgb(57,172,66),Color.rgb(57,112,69),Color.rgb(211,239,250),Color.rgb(125,117,126),Color.rgb(167,83,197),Color.rgb(222,76,42)};
+        int[] edge={Color.rgb(145,229,84),Color.rgb(109,160,93),Color.rgb(245,253,255),Color.rgb(188,173,170),Color.rgb(224,130,244),Color.rgb(255,145,55)};
+        for(RectF s:solids){
+            p.setColor(blend(body[id],Color.rgb(62,29,38),d));c.drawRect(s,p);
+            float tile=id==2?22:28;
+            for(float yy=s.top+10;yy<s.bottom;yy+=tile)for(float xx=s.left;xx<s.right;xx+=tile){
+                int a=(int)((xx-s.left)/tile),b=(int)((yy-s.top)/tile);
+                p.setColor(((a+b)&1)==0?blend(body[id],Color.rgb(90,38,43),d):blend(body2[id],Color.rgb(48,26,34),d));
+                c.drawRect(xx,yy,Math.min(xx+tile,s.right),Math.min(yy+tile,s.bottom),p);
+            }
+            p.setColor(blend(top[id],Color.rgb(128,45,47),d));c.drawRect(s.left,s.top,s.right,Math.min(s.bottom,s.top+11),p);
+            p.setColor(blend(edge[id],Color.rgb(228,72,50),d));c.drawRect(s.left,s.top,s.right,Math.min(s.bottom,s.top+4),p);
+            if(id==2){p.setColor(Color.argb(110,255,255,255));for(float xx=s.left+12;xx<s.right;xx+=42)c.drawCircle(xx,s.top+7,3,p);}
+            if(id==3){p.setColor(Color.argb(100,0,0,0));for(float xx=s.left+24;xx<s.right;xx+=56)c.drawRect(xx,s.top+13,xx+5,s.bottom,p);}
+        }
     }
 
     @Override void drawDecor(Canvas c,float d){
@@ -396,7 +470,8 @@ public class GameViewV4 extends GameView {
     @Override void drawStart(Canvas c){
         super.drawStart(c);
         p.setColor(Color.rgb(255,245,190));p.setTextSize(14);
-        c.drawText("ACT 1  •  MEADOW OF MEMORIES",165,352,p);
+        String[] n={"MEADOW OF MEMORIES","WHISPERING WOODS","FROZEN HEIGHTS","ABANDONED KEEP","INVERTED DREAM","FINAL CONFRONTATION"};
+        c.drawText("ACT "+(mapId+1)+"  •  "+n[Math.max(0,Math.min(5,mapId))],165,352,p);
     }
 
     @Override void drawGoal(Canvas c){
