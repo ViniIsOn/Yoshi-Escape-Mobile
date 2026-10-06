@@ -159,13 +159,12 @@ public class GameViewV4 extends GameView {
             yGrace4=.65f;
         }
         yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
-        // Capture is tied to the visible sprite centers, not a broad invisible box.
-        float marioCx=x+18f, marioCy=y+27f;
-        float yoshiCx=yx+43f, yoshiCy=yy+40f;
-        float catchDx=Math.abs(marioCx-yoshiCx);
-        float catchDy=Math.abs(marioCy-yoshiCy);
-        boolean yoshiVisible=(yoshiChase!=null||yoshiRun!=null);
-        if(yoshiVisible && catchDx<25f && catchDy<34f){
+        // Collision follows the rectangles actually drawn on screen.
+        // Both are inset so transparent edges do not count as a hit.
+        RectF marioHit=new RectF(x+8f,y+8f,x+30f,y+45f);
+        RectF yoshiHit=new RectF(yx+8f,yy+5f,yx+76f,yy+76f);
+        boolean yoshiVisible=(yoshiFly!=null||yoshiRun!=null||yoshiChase!=null);
+        if(yoshiVisible && RectF.intersects(marioHit,yoshiHit)){
             deathCause="YOSHI";
             state=OVER;
             vx=vy=0;
