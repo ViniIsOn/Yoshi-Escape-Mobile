@@ -28,6 +28,9 @@ public class GameViewV4 extends GameView {
     private float transitionAlpha=0f;
     private float scenePulse=0f;
     private float titleCard=0f;
+    private float ringFlash=0f, springFlash=0f, goalFlash=0f;
+    private int lastRingVisual=0;
+    private boolean wasGroundedVisual=false;
     private int lastPolishState=-1;
     
     private android.content.SharedPreferences prefs;
@@ -132,7 +135,11 @@ public class GameViewV4 extends GameView {
         scenePulse+=dt;
 
         if(titleCard>0f) titleCard=Math.max(0f,titleCard-dt);
+        int ringsBefore=ringCount; boolean groundBefore=grounded; float vyBefore=vy;
         super.update(dt);
+        if(ringCount>ringsBefore){ ringFlash=.28f; lastRingVisual=ringCount; beep(ToneGenerator.TONE_PROP_BEEP,24); }
+        if(!groundBefore && grounded && vyBefore>260f) springFlash=Math.max(springFlash,.12f);
+        ringFlash=Math.max(0f,ringFlash-dt); springFlash=Math.max(0f,springFlash-dt); goalFlash=Math.max(0f,goalFlash-dt);
         // When the timer expires and the hunt begins, play the warning sting
         // once, then resume the lap-3 chase music when it finishes.
         // Lap 3 is a permanent hunt: if any rendering/state edge case ever
@@ -296,9 +303,9 @@ public class GameViewV4 extends GameView {
             // 6 - Final Confrontation: fast finale with long readable chase lanes.
             ground(0,900); ground(1010,1840); ground(1960,2860); ground(2980,3920); ground(4040,4980); ground(5100,WORLD);
             plat(300,350,190); plat(580,305,170); plat(1120,350,200); plat(1430,300,180);
-            plat(2070,345,210); plat(2390,295,180); plat(3100,345,220); plat(3440,295,190);
+            plat(2070,345,210); plat(2390,295,180); plat(2700,250,150); plat(3100,345,220); plat(3440,295,190); plat(3720,250,150);
             plat(4160,340,220); plat(4510,290,190); plat(5230,335,240);
-            springs.add(new RectF(840,GROUND-20,888,GROUND)); springs.add(new RectF(2800,GROUND-20,2848,GROUND)); springs.add(new RectF(4920,GROUND-20,4968,GROUND));
+            springs.add(new RectF(840,GROUND-20,888,GROUND)); springs.add(new RectF(2800,GROUND-20,2848,GROUND)); springs.add(new RectF(3920,GROUND-20,3968,GROUND)); springs.add(new RectF(4920,GROUND-20,4968,GROUND));
             spikes.add(new RectF(1760,GROUND-18,1798,GROUND)); spikes.add(new RectF(3860,GROUND-18,3898,GROUND));
             ringArc(120,9,72,390,110); ringArc(1040,9,72,390,105); ringRow(2020,2760,76,390);
             ringArc(3020,9,72,390,110); ringRow(4100,4860,76,390); ringArc(5140,8,72,390,100);
@@ -457,13 +464,31 @@ public class GameViewV4 extends GameView {
             p.setColor(Color.argb((int)(255*a),255,225,70));p.setTextSize(Math.max(18,h*.048f));
             c.drawText("COURSE "+(mapId+1),w*.5f,h*.45f,p);
             p.setColor(Color.argb((int)(255*a),255,255,255));p.setTextSize(Math.max(13,h*.029f));
-            String[] n={"MEADOW OF MEMORIES","PIPE HILLS","FORGOTTEN RUINS","STAR ROAD","INVERTED WORLD","FINAL CONFRONTATION"};
+            String[] n={"MEADOW OF MEMORIES","WHISPERING WOODS","FROZEN HEIGHTS","ABANDONED KEEP","INVERTED DREAM","FINAL CONFRONTATION"};
             c.drawText(n[Math.max(0,Math.min(5,mapId))],w*.5f,h*.52f,p);
             p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
         }
-        // subtle cinematic scanline texture; hand-tuned, not a flat generated panel.
-        p.setColor(Color.argb(12,255,255,255));
-        for(int yy=1;yy<h;yy+=4)c.drawRect(0,yy,w,yy+1,p);
+        // Gameplay feedback: short, transparent effects only; never a fullscreen black transition.
+        float sp=Math.min(1f,Math.abs(vx)/405f);
+        if(sp>.72f){
+            p.setStrokeWidth(2);p.setColor(Color.argb((int)(42*sp),255,255,255));
+            for(int i=0;i<9;i++){float yy=(i*61+(float)clock*170)%h;float len=28+sp*52;c.drawLine(w*.72f,yy,w*.72f+len,yy,p);}
+        }
+        if(ringFlash>0f){
+            float a=ringFlash/.28f;p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+            p.setColor(Color.argb((int)(255*a),255,224,65));p.setTextSize(Math.max(18,h*.040f));
+            c.drawText("+ RING",w*.5f,h*(.30f-.035f*(1-a)),p);p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+        }
+        if(state==HUNT && yActive){
+            float pulse=.5f+.5f*(float)Math.sin(clock*8);
+            p.setColor(Color.argb((int)(55+45*pulse),205,38,45));c.drawRect(0,52*Math.max(1f,h/480f),w,56*Math.max(1f,h/480f),p);
+            p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+            p.setTextSize(Math.max(11,h*.022f));p.setColor(Color.argb((int)(170+80*pulse),255,225,120));c.drawText("YOSHI IS HUNTING YOU",w/2f,72*Math.max(1f,h/480f),p);
+            p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+        }
+        // subtle cinematic scanline texture.
+        p.setColor(Color.argb(9,255,255,255));
+        for(int yy=1;yy<h;yy+=5)c.drawRect(0,yy,w,yy+1,p);
     }
 
 
