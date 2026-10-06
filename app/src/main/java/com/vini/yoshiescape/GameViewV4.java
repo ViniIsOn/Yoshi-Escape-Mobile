@@ -26,6 +26,9 @@ public class GameViewV4 extends GameView {
     private boolean yoshiGrounded=true;
     private Bitmap hqPanel1,hqPanel2,marioSmw;
     private float transitionAlpha=1f;
+    private float scenePulse=0f;
+    private float titleCard=0f;
+    private int lastPolishState=-1;
     
     private android.content.SharedPreferences prefs;
 
@@ -126,6 +129,9 @@ public class GameViewV4 extends GameView {
 
     @Override void update(float dt){
         int before=state;
+        scenePulse+=dt;
+        if(transitionAlpha>0f) transitionAlpha=Math.max(0f,transitionAlpha-dt*2.4f);
+        if(titleCard>0f) titleCard=Math.max(0f,titleCard-dt);
         super.update(dt);
         // When the timer expires and the hunt begins, play the warning sting
         // once, then resume the lap-3 chase music when it finishes.
@@ -133,6 +139,7 @@ public class GameViewV4 extends GameView {
         // disables Yoshi, bring the chase back instead of leaving an empty lap.
         if(lap>=3 && state==HUNT && !yActive) spawnYoshi();
 
+        if(before!=state){ transitionAlpha=1f; if(state==PLAY||state==HUNT) titleCard=1.65f; lastPolishState=state; }
         if(before!=HUNT && state==HUNT && lap<3){
             playTrack(R.raw.time_is_up,false);
             if(bgm!=null){
@@ -365,6 +372,35 @@ public class GameViewV4 extends GameView {
         }else super.drawPlayer(c);
     }
 
+    private void drawPolishOverlay(Canvas c){
+        int w=c.getWidth(),h=c.getHeight();
+        if(titleCard>0f && (state==PLAY||state==HUNT)){
+            float a=Math.min(1f,titleCard*2f);
+            p.setColor(Color.argb((int)(175*a),5,12,24));
+            c.drawRoundRect(w*.28f,h*.37f,w*.72f,h*.58f,14,14,p);
+            p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+            p.setColor(Color.argb((int)(255*a),255,225,70));p.setTextSize(Math.max(18,h*.048f));
+            c.drawText("COURSE "+(mapId+1),w*.5f,h*.45f,p);
+            p.setColor(Color.argb((int)(255*a),255,255,255));p.setTextSize(Math.max(13,h*.029f));
+            String[] n={"MEADOW OF MEMORIES","PIPE HILLS","FORGOTTEN RUINS","STAR ROAD","INVERTED WORLD","FINAL CONFRONTATION"};
+            c.drawText(n[Math.max(0,Math.min(5,mapId))],w*.5f,h*.52f,p);
+            p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+        }
+        if(transitionAlpha>0f){
+            int a=(int)(255*Math.min(1f,transitionAlpha));
+            p.setColor(Color.argb(a,0,0,0));c.drawRect(0,0,w,h,p);
+        }
+        // subtle cinematic scanline texture; hand-tuned, not a flat generated panel.
+        p.setColor(Color.argb(12,255,255,255));
+        for(int yy=1;yy<h;yy+=4)c.drawRect(0,yy,w,yy+1,p);
+    }
+
+    @Override protected void onDraw(Canvas c){
+        super.onDraw(c);
+        drawPolishOverlay(c);
+        invalidate();
+    }
+
     @Override void drawStart(Canvas c){
         super.drawStart(c);
         p.setColor(Color.rgb(255,245,190));p.setTextSize(14);
@@ -438,6 +474,8 @@ public class GameViewV4 extends GameView {
 
     private void drawMapSelect(Canvas c){
         unlockedMap=Math.max(unlockedMap,Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0))));
+        // tiny living-map motion: selected node breathes instead of looking like a static mockup.
+        scenePulse+=0.016f;
         int w=c.getWidth(),h=c.getHeight();
         p.setColor(Color.rgb(18,35,57));c.drawRect(0,0,w,h,p);
         p.setColor(Color.rgb(31,70,73));
