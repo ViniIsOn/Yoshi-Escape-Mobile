@@ -21,6 +21,7 @@ public class GameViewV4 extends GameView {
     private boolean mapSelect=false;
     private int unlockedMap=0;
     private boolean courseComplete=false;
+    private boolean returnPressed=false;
     private float yoshiVy=0f;
     private boolean yoshiGrounded=true;
     
@@ -292,20 +293,39 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void drawDecor(Canvas c,float d){
-        super.drawDecor(c,d);
+        // Intentionally do not call super.drawDecor(): the old generic flowers
+        // were placed at fixed Y coordinates and could float across pits.
         if(mapId==0){
-            for(float q=700;q<WORLD;q+=900){p.setColor(Color.rgb(60,145,65));c.drawCircle(q,380,32,p);}
+            for(float q=240;q<WORLD;q+=520){
+                p.setColor(Color.rgb(42,125,48));c.drawRect(q,GROUND-30,q+5,GROUND,p);
+                p.setColor(Color.rgb(250,208,62));c.drawCircle(q+2,GROUND-34,7,p);
+            }
         }else if(mapId==1){
-        for(float q=250;q<WORLD;q+=330){
-            p.setColor(blend(Color.rgb(95,101,115),Color.rgb(75,39,55),d));
-            c.drawRect(q,330,q+34,GROUND,p);
-            c.drawRect(q-18,326,q+52,342,p);
-        }
+            for(float q=260;q<WORLD;q+=660){
+                p.setColor(blend(Color.rgb(70,91,72),Color.rgb(52,38,54),d));
+                c.drawRect(q,GROUND-92,q+22,GROUND,p);
+                p.setColor(Color.rgb(218,145,54));c.drawRect(q+5,GROUND-108,q+17,GROUND-92,p);
+            }
+        }else if(mapId==2){
+            for(float q=300;q<WORLD;q+=720){
+                p.setColor(Color.rgb(170,218,244));
+                Path z=new Path();z.moveTo(q-18,GROUND);z.lineTo(q,GROUND-72);z.lineTo(q+18,GROUND);z.close();c.drawPath(z,p);
+            }
+        }else if(mapId==3){
+            for(float q=330;q<WORLD;q+=760){
+                p.setColor(Color.rgb(72,72,82));c.drawRect(q,GROUND-76,q+30,GROUND,p);
+                p.setColor(Color.rgb(230,112,43));c.drawCircle(q+15,GROUND-84,10,p);
+            }
+        }else if(mapId==4){
+            for(float q=300;q<WORLD;q+=700){
+                p.setColor(Color.argb(180,128,62,180));c.drawRect(q,GROUND-48,q+7,GROUND,p);
+                c.drawCircle(q+3,GROUND-55,13,p);
+            }
         }else{
-        for(float q=220;q<WORLD;q+=280){
-            p.setColor(Color.argb(145,120,42,170));
-            c.drawCircle(q,365+(float)Math.sin(q)*18,22,p);
-        }
+            for(float q=360;q<WORLD;q+=820){
+                p.setColor(Color.rgb(86,50,48));c.drawRect(q,GROUND-64,q+32,GROUND,p);
+                p.setColor(Color.rgb(242,77,42));c.drawCircle(q+16,GROUND-72,9,p);
+            }
         }
     }
 
@@ -323,6 +343,12 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.rgb(255,225,72));c.drawText("COURSE "+(mapId+1),w-126*s,40*s,p);
         p.setColor(Color.WHITE);c.drawText("LAP "+Math.max(1,lap==0?1:lap),w-72*s,40*s,p);
         p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+        if(playable()){
+            float bw=86*s,bh=30*s,l=w-bw-12*s,t=74*s;
+            p.setColor(Color.argb(190,8,18,30));c.drawRoundRect(l,t,l+bw,t+bh,9*s,9*s,p);
+            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(12*s);
+            c.drawText("MENU",l+bw/2,t+20*s,p);p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
+        }
     }
 
     @Override void drawStart(Canvas c){
@@ -338,10 +364,25 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void start(){
+        int chosen=mapId;
         super.start();
-        mapId=0; buildLevel();
-        storyIntro=!prefs.getBoolean("prologue_seen_v11",false); storyPage=0;
+        mapId=chosen; buildLevel();
+        storyIntro=(mapId==0)&&!prefs.getBoolean("prologue_seen_v11",false); storyPage=0;
         playTrack(R.raw.run_you_fool,true);
+    }
+
+    private void unlockAfterCourse(){
+        courseComplete=true;
+        int next=Math.min(5,mapId+1);
+        if(next>unlockedMap){
+            unlockedMap=next;
+            prefs.edit().putInt("unlocked_map_v11",unlockedMap).apply();
+        }
+    }
+
+    @Override void finish(){
+        super.finish();
+        unlockAfterCourse();
     }
 
     private void drawStory(Canvas c){
@@ -406,7 +447,7 @@ public class GameViewV4 extends GameView {
     }
 
     private void startSelectedMap(int id){
-        mapSelect=false; start(); mapId=id; buildLevel();
+        mapSelect=false; mapId=id; start();
         prefs.edit().putInt("last_map_v11",id).apply();
         storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v11",false);
     }
@@ -414,6 +455,13 @@ public class GameViewV4 extends GameView {
     @Override void render(Canvas c){super.render(c);if(mapSelect)drawMapSelect(c);if(storyIntro)drawStory(c);}
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
+        if(e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN && playable()){
+            float s=Math.max(1f,getHeight()/480f),bw=86*s,bh=30*s,l=getWidth()-bw-12*s,t=74*s;
+            if(e.getX()>=l&&e.getX()<=l+bw&&e.getY()>=t&&e.getY()<=t+bh){
+                touches.clear();leftDown=rightDown=jumpDown=runDown=false;
+                state=MENU;mapSelect=false;storyIntro=false;stopTrack();playTrack(R.raw.escape_menu,true);return true;
+            }
+        }
         if(mapSelect && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
             float tx=e.getX(),ty=e.getY(),w=getWidth(),h=getHeight();
             float[][] pos={{.10f,.63f},{.27f,.46f},{.43f,.65f},{.59f,.43f},{.75f,.63f},{.90f,.45f}};
@@ -429,8 +477,7 @@ public class GameViewV4 extends GameView {
 
     @Override void nextLap(){
         if(lap<3){beginLap(lap+1,lap+1>=3);return;}
-        courseComplete=true;int next=Math.min(5,mapId+1);
-        if(next>unlockedMap){unlockedMap=next;prefs.edit().putInt("unlocked_map_v11",unlockedMap).apply();}
+        unlockAfterCourse();
         state=MENU;stopTrack();playTrack(R.raw.escape_menu,true);mapSelect=true;
     }
 
