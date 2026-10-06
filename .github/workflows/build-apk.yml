@@ -56,37 +56,26 @@ jobs:
       - name: Prepare real launcher icon
         shell: bash
         run: |
-          SRC="app/src/main/res/drawable-nodpi/yoshi.png"
-          test -f "$SRC" || { echo "Missing launcher source: $SRC"; exit 1; }
+          # The repository yoshi.png is truncated for Pillow. Android can decode it,
+          # so copy the verified game asset directly into real density-specific
+          # launcher PNG resources. No Pillow/ImageMagick/XML composition.
+          SRC="app/src/main/res/drawable-nodpi/yoshi_fly.png"
+          test -f "$SRC" || SRC="app/src/main/res/drawable-nodpi/yoshi.png"
+          test -f "$SRC" || { echo "No usable Yoshi launcher source"; exit 1; }
 
-          # Generate actual PNG launcher resources. Pillow is installed here so
-          # the result no longer depends on launcher XML composition or ImageMagick.
-          python3 -m pip install --quiet pillow
-          python3 - <<'PY'
-          from PIL import Image
-          from pathlib import Path
-          src=Path("app/src/main/res/drawable-nodpi/yoshi.png")
-          im=Image.open(src).convert("RGBA")
-          w,h=im.size
-          # Crop to the head/face area and exclude any title/text below it.
-          crop=im.crop((int(w*.15),int(h*.07),int(w*.85),int(h*.78)))
-          side=max(crop.size)
-          bg=Image.new("RGBA",(side,side),(9,18,47,255))
-          bg.alpha_composite(crop,((side-crop.width)//2,(side-crop.height)//2))
-          for den,size in {"mdpi":48,"hdpi":72,"xhdpi":96,"xxhdpi":144,"xxxhdpi":192}.items():
-              d=Path("app/src/main/res")/f"mipmap-{den}"
-              d.mkdir(parents=True,exist_ok=True)
-              icon=bg.resize((size,size),Image.Resampling.LANCZOS)
-              icon.save(d/"ic_launcher.png")
-              icon.save(d/"ic_launcher_round.png")
-          PY
-
-          # Force Android to use the generated PNGs on every API level.
           rm -f app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           rm -f app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           rm -f app/src/main/res/mipmap/ic_launcher.xml
           rm -f app/src/main/res/mipmap/ic_launcher_round.xml
-          test -f app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          for D in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p "app/src/main/res/mipmap-$D"
+            cp "$SRC" "app/src/main/res/mipmap-$D/ic_launcher.png"
+            cp "$SRC" "app/src/main/res/mipmap-$D/ic_launcher_round.png"
+          done
+
+          file app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
