@@ -81,11 +81,25 @@ jobs:
           }
           for src,dst in files.items():
               p=root/src
-              if p.exists():
-                  data=''.join(p.read_text().split())
-                  (out/dst).write_bytes(base64.b64decode(data))
+              target=out/dst
+              if target.exists() and target.stat().st_size>0:
+                  print(dst,'already present')
+                  continue
+              if not p.exists():
+                  print(src,'missing; skipping')
+                  continue
+              try:
+                  data=''.join(p.read_text(encoding='utf-8-sig',errors='ignore').split())
+                  data=data.replace('data:image/png;base64,','')
+                  data += '=' * (-len(data) % 4)
+                  decoded=base64.b64decode(data,validate=False)
+                  if decoded[:8] != b'\x89PNG\r\n\x1a\n':
+                      raise ValueError('decoded asset is not a PNG')
+                  target.write_bytes(decoded)
                   p.unlink()
-                  print(src,'->',dst)
+                  print(src,'->',dst,len(decoded),'bytes')
+              except Exception as e:
+                  print('WARNING:',src,'could not be decoded:',e)
           PY
 
       - name: Setup Gradle 8.7
