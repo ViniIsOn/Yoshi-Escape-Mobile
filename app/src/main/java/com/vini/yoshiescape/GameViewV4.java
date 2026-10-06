@@ -512,24 +512,26 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.rgb(5,9,18));c.drawRect(0,0,w,h,p);
         float l=w*.08f,r=w*.92f,t=h*.10f,b=h*.80f;
         p.setColor(Color.rgb(238,235,215));c.drawRoundRect(l,t,r,b,12,12,p);
-        Bitmap panel=storyPage==0?hqPanel1:storyPage==1?hqPanel2:null;
+        Bitmap panel=storyPage<3?hqPanel1:hqPanel2;
         if(panel!=null){
-            drawBitmapAspect(c,panel,new RectF(l+10,t+10,r-10,b-48),false,true);
+            int part=storyPage%3;
+            int sw=panel.getWidth(),sh=panel.getHeight();
+            // The supplied HQ art is presented as six cinematic crops instead
+            // of replacing four pages with generated-looking placeholder art.
+            int cropW=Math.max(1,sw/3);
+            int left=Math.min(sw-1,part*cropW);
+            int right=(part==2)?sw:Math.min(sw,left+cropW);
+            Rect src=new Rect(left,0,right,sh);
+            RectF dst=new RectF(l+10,t+10,r-10,b-48);
+            c.save();
+            c.clipRect(dst);
+            c.drawBitmap(panel,src,dst,px);
+            c.restore();
         }else{
-            p.setColor(storyPage<4?Color.rgb(35,67,76):Color.rgb(75,25,38));c.drawRect(l+10,t+10,r-10,b-48,p);
+            p.setColor(Color.rgb(28,38,52));c.drawRect(l+10,t+10,r-10,b-48,p);
             Bitmap yb=(yoshiFly!=null?yoshiFly:(yoshiRun!=null?yoshiRun:yoshiChase));
-            if(storyPage==2){
-                drawBitmapAspect(c,yb,new RectF(w*.18f,h*.30f,w*.43f,h*.68f),true,true);
-                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioStand,new RectF(w*.65f,h*.35f,w*.76f,h*.68f),false,true);
-            }else if(storyPage==3){
-                drawBitmapAspect(c,yb,new RectF(w*.37f,h*.22f,w*.63f,h*.69f),false,true);
-            }else if(storyPage==4){
-                drawBitmapAspect(c,yb,new RectF(w*.15f,h*.28f,w*.43f,h*.69f),false,true);
-                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioRun[2],new RectF(w*.67f,h*.36f,w*.78f,h*.69f),false,true);
-            }else{
-                drawBitmapAspect(c,yb,new RectF(w*.27f,h*.18f,w*.58f,h*.70f),false,true);
-                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioRun[3],new RectF(w*.70f,h*.39f,w*.80f,h*.70f),false,true);
-            }
+            drawBitmapAspect(c,yb,new RectF(w*.24f,h*.22f,w*.55f,h*.69f),false,true);
+            drawBitmapAspect(c,marioSmw!=null?marioSmw:marioStand,new RectF(w*.68f,h*.38f,w*.80f,h*.69f),false,true);
         }
         String[] cap={"Antes da fuga...","O último salto.","Yoshi ficou para trás.","Ele não esqueceu.","CORRA.","A CAÇADA COMEÇA."};
         p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setColor(Color.rgb(20,24,30));p.setTextSize(Math.max(15,h*.031f));
@@ -537,6 +539,34 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.WHITE);p.setTextSize(Math.max(16,h*.034f));c.drawText("PRÓLOGO  "+(storyPage+1)+"/6",w/2,h*.065f,p);
         p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(13,h*.026f));c.drawText(storyPage<5?"TOQUE PARA AVANÇAR":"TOQUE PARA CORRER",w/2,h*.89f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
+    }
+
+    @Override void menuUI(Canvas c,int w,int h){
+        float pulse=.5f+.5f*(float)Math.sin(scenePulse*2.2f);
+        // Dark SNES-like panel over the animated base menu scene.
+        float pw=Math.min(470,w*.44f),ph=Math.min(286,h*.55f),l=w*.53f,t=h*.27f;
+        p.setColor(Color.argb(218,5,13,28));c.drawRoundRect(l,t,l+pw,t+ph,10,10,p);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(Math.max(2,h*.004f));
+        p.setColor(Color.rgb(84,185,239));c.drawRoundRect(l,t,l+pw,t+ph,10,10,p);p.setStyle(Paint.Style.FILL);
+
+        p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);p.setTextAlign(Paint.Align.LEFT);
+        p.setColor(Color.rgb(255,222,72));p.setTextSize(Math.max(18,h*.038f));c.drawText("YOSHI ESCAPE",l+28,t+42,p);
+        p.setColor(Color.rgb(150,190,215));p.setTextSize(Math.max(10,h*.020f));c.drawText("THE REVENGE RUN",l+29,t+64,p);
+
+        String[] it={"▶  JOGAR","◆  SOM  "+(sound?"ON":"OFF"),"?  COMO JOGAR","★  CRÉDITOS"};
+        float first=t+112,row=(ph-128)/3f;
+        for(int i=0;i<4;i++){
+            float yy=first+i*row;
+            if(i==0){
+                p.setColor(Color.argb((int)(145+45*pulse),255,210,55));
+                c.drawRoundRect(l+18,yy-29,l+pw-18,yy+13,7,7,p);
+                p.setColor(Color.rgb(15,24,38));
+            }else p.setColor(Color.WHITE);
+            p.setTextSize(Math.max(15,h*.030f));c.drawText(it[i],l+34,yy,p);
+        }
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(Math.max(10,h*.019f));p.setColor(Color.rgb(128,176,202));
+        c.drawText("ESCAPE • SURVIVE • UNLOCK THE WORLD",l+pw/2,t+ph-17,p);
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
     private void drawMapSelect(Canvas c){
@@ -616,10 +646,13 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void menuTap(float x,float y){
-        float h=getHeight(),w=getWidth(),ch=Math.min(270,h*.52f),t=h*.42f,first=t+58;
-        if(Math.abs(y-first)<34&&x>w*.24f&&x<w*.76f){mapSelect=true;return;}
-        boolean before=sound;super.menuTap(x,y);
-        if(before!=sound){if(sound&&state==MENU)playTrack(R.raw.escape_menu,true);else if(!sound)stopTrack();}
+        float h=getHeight(),w=getWidth(),pw=Math.min(470,w*.44f),ph=Math.min(286,h*.55f),l=w*.53f,t=h*.27f;
+        float first=t+112,row=(ph-128)/3f; int hit=-1;
+        if(x>=l&&x<=l+pw) for(int i=0;i<4;i++) if(Math.abs(y-(first+i*row))<30) hit=i;
+        if(hit==0){mapSelect=true;beep(ToneGenerator.TONE_PROP_ACK,45);return;}
+        if(hit==1){sound=!sound;if(sound)playTrack(R.raw.escape_menu,true);else stopTrack();return;}
+        if(hit==2){state=HOW;beep(ToneGenerator.TONE_PROP_ACK,35);return;}
+        if(hit==3){state=CREDITS;beep(ToneGenerator.TONE_PROP_ACK,35);return;}
     }
 
     @Override protected void onDetachedFromWindow(){stopTrack();super.onDetachedFromWindow();}
