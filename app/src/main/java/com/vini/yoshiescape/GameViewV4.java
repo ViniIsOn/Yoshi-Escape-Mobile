@@ -18,6 +18,9 @@ public class GameViewV4 extends GameView {
     private boolean storyIntro=true;
     private int storyPage=0;
     private int mapId=0;
+    private boolean mapSelect=false;
+    private float yoshiVy=0f;
+    private boolean yoshiGrounded=true;
     
     private android.content.SharedPreferences prefs;
 
@@ -136,42 +139,53 @@ public class GameViewV4 extends GameView {
         yGrace4=1.8f;
         yspeed=285f;
         yx=toStart?Math.min(WORLD-120,x+470f):Math.max(30f,x-470f);
-        yy=GROUND-102f;
+        yy=GROUND-94f;
+        yoshiVy=0f; yoshiGrounded=true;
     }
 
     @Override void chase(float dt){
         float dir=Math.signum(x-yx);
-        if(dir==0)dir=toStart?-1:1;
-        if(yGrace4>0){
-            yGrace4-=dt;
-            yx+=dir*240f*dt;
-            yy=GROUND-104f+(float)Math.sin(clock*7f)*8f;
-            return;
-        }
-        // Mario reaches 405 while running. Yoshi stays slightly slower by
-        // default, so skill can create distance. Short boosts add pressure
-        // without teleporting or making the chase mathematically unwinnable.
-        float gap=Math.abs(x-yx);
-        float targetSpeed=335f;
-        if(gap>330f) targetSpeed=375f;
-        else if(gap<125f) targetSpeed=315f;
-        yspeed+=(targetSpeed-yspeed)*Math.min(1f,dt*2.2f);
-        yx+=dir*yspeed*dt;
+        if(dir==0)dir=faceRight?1:-1;
 
-        // Never reposition Yoshi. Clamp only to world boundaries.
-        if(Float.isNaN(yx)||Float.isInfinite(yx)) yx=toStart?WORLD-120f:30f;
+        // Fair pursuit: Mario's run cap is 405. Yoshi pressures but does not
+        // simply outrun the player forever.
+        float gap=Math.abs(x-yx);
+        float targetSpeed=gap>360f?365f:(gap<120f?305f:335f);
+        if(yGrace4>0){yGrace4-=dt;targetSpeed=Math.min(targetSpeed,285f);}
+        yspeed+=(targetSpeed-yspeed)*Math.min(1f,dt*2.4f);
+        yx+=dir*yspeed*dt;
         yx=clamp(yx,20f,WORLD-100f);
-        yy=GROUND-94f+(float)Math.sin(clock*9f)*7f;
-        // Collision follows the rectangles actually drawn on screen.
-        // Both are inset so transparent edges do not count as a hit.
+
+        // Yoshi actually follows vertical routes now. If Mario takes a higher
+        // platform, Yoshi jumps instead of blindly running underneath it.
+        if(yoshiGrounded && y < yy-34f){
+            yoshiVy=-545f;
+            yoshiGrounded=false;
+        }
+        float oldY=yy;
+        yoshiVy=Math.min(850f,yoshiVy+1450f*dt);
+        yy+=yoshiVy*dt;
+        yoshiGrounded=false;
+
+        float feetOld=oldY+78f, feetNew=yy+78f;
+        float best=GROUND;
+        for(RectF s:solids){
+            float cx=yx+42f;
+            if(cx>s.left+6 && cx<s.right-6 && yoshiVy>=0 && feetOld<=s.top+10 && feetNew>=s.top){
+                best=Math.min(best,s.top);
+            }
+        }
+        if(feetNew>=best){
+            yy=best-78f;
+            yoshiVy=0;
+            yoshiGrounded=true;
+        }
+        if(yy>GROUND-78f){yy=GROUND-78f;yoshiVy=0;yoshiGrounded=true;}
+
         RectF marioHit=new RectF(x+8f,y+8f,x+30f,y+45f);
-        RectF yoshiHit=new RectF(yx+8f,yy+5f,yx+76f,yy+76f);
-        boolean yoshiVisible=(yoshiFly!=null||yoshiRun!=null||yoshiChase!=null);
-        if(yoshiVisible && RectF.intersects(marioHit,yoshiHit)){
-            deathCause="YOSHI";
-            state=OVER;
-            vx=vy=0;
-            stopTrack();
+        RectF yoshiHit=new RectF(yx+13f,yy+10f,yx+70f,yy+73f);
+        if(RectF.intersects(marioHit,yoshiHit)){
+            deathCause="YOSHI"; state=OVER; vx=vy=0; stopTrack();
             beep(ToneGenerator.TONE_CDMA_ABBR_ALERT,220);
         }
     }
@@ -188,7 +202,7 @@ public class GameViewV4 extends GameView {
         c.drawCircle(yx+42,yy+36,42,p);
 
         // Face Mario. The source artwork faces right.
-        boolean flip=(x<yx);
+        boolean flip=(x>yx);
         drawBitmapAspect(c,b,new RectF(yx-10,yy-10,yx+94,yy+82),flip,false);
 
         // World-space warning marker. It is transformed by the same camera as Yoshi.
@@ -207,31 +221,61 @@ public class GameViewV4 extends GameView {
         }
     }
 
+    private void ringRow(float a,float b,float step,float yy){
+        for(float q=a;q<=b;q+=step)addRing(q,yy);
+    }
+    private void ringArc(float a,int n,float step,float base,float amp){
+        for(int i=0;i<n;i++)addRing(a+i*step,base-(float)Math.sin(i*Math.PI/(n-1))*amp);
+    }
+
     @Override void buildLevel(){
         solids.clear(); springs.clear(); spikes.clear(); rings.clear();
         if(mapId==0){
-            // MAP 1 - Meadow of Memories: open, readable and fast.
-            ground(0,920); ground(1035,1860); ground(1990,2920); ground(3050,4040); ground(4160,5050); ground(5170,WORLD);
-            plat(520,355,190); plat(1210,330,210); plat(1600,285,170); plat(2310,350,220); plat(3500,340,220); plat(4550,325,210);
-            springs.add(new RectF(860,GROUND-20,908,GROUND)); springs.add(new RectF(4000,GROUND-20,4048,GROUND));
-            spikes.add(new RectF(2670,GROUND-18,2712,GROUND));
-            lineRings(220,850,74,392); arcRings(1080,7,74,385,92); lineRings(2050,2850,80,392); arcRings(4200,8,74,386,96);
+            // 1 - Yoshi's Meadow: introductory route, every platform reachable.
+            ground(0,1050); ground(1160,2140); ground(2260,3340); ground(3460,4540); ground(4660,WORLD);
+            plat(430,360,180); plat(690,315,170); plat(1280,355,190); plat(1540,305,180);
+            plat(2390,350,200); plat(2700,300,180); plat(3600,350,210); plat(3910,300,190); plat(4800,345,220);
+            springs.add(new RectF(990,GROUND-20,1038,GROUND)); springs.add(new RectF(3280,GROUND-20,3328,GROUND));
+            spikes.add(new RectF(2050,GROUND-18,2088,GROUND));
+            ringRow(170,900,78,392); ringArc(1180,8,70,390,95); ringRow(2320,3200,80,392);
+            ringArc(3500,8,72,390,92); ringRow(4700,5550,80,392);
         }else if(mapId==1){
-            // MAP 2 - Forgotten Ruins: vertical routes, ruins and safe telegraphing.
-            ground(0,690); ground(830,1460); ground(1600,2260); ground(2400,3180); ground(3330,3980); ground(4130,4800); ground(4950,WORLD);
-            plat(300,345,170); plat(930,370,150); plat(1130,310,155); plat(1690,350,180); plat(1940,285,165);
-            plat(2520,365,170); plat(2760,305,180); plat(3440,350,190); plat(3720,290,180); plat(4260,335,190); plat(4540,275,165); plat(5300,335,210);
-            springs.add(new RectF(650,GROUND-20,698,GROUND)); springs.add(new RectF(3140,GROUND-20,3188,GROUND)); springs.add(new RectF(4760,GROUND-20,4808,GROUND));
-            spikes.add(new RectF(1810,GROUND-18,1848,GROUND)); spikes.add(new RectF(3590,GROUND-18,3628,GROUND));
-            arcRings(120,8,70,388,100); lineRings(900,1400,70,390); arcRings(1640,8,70,386,110); lineRings(2440,3120,76,390); arcRings(4160,8,72,385,105);
+            // 2 - Pipe Hills: staircase rhythm, no blind spike landings.
+            ground(0,820); ground(940,1800); ground(1920,2780); ground(2900,3900); ground(4020,5000); ground(5120,WORLD);
+            plat(300,365,180); plat(560,320,170); plat(1040,360,180); plat(1290,315,175); plat(1515,275,165);
+            plat(2030,350,190); plat(2300,305,180); plat(3020,355,200); plat(3300,310,180); plat(3540,270,170);
+            plat(4150,350,210); plat(4450,305,190); plat(5260,345,220);
+            springs.add(new RectF(770,GROUND-20,818,GROUND)); springs.add(new RectF(3850,GROUND-20,3898,GROUND));
+            spikes.add(new RectF(2650,GROUND-18,2688,GROUND));
+            ringArc(130,9,72,390,105); ringRow(1020,1690,72,245); ringArc(1970,8,74,390,95);
+            ringRow(3010,3650,74,238); ringArc(4080,8,72,390,90); ringRow(5180,5740,75,392);
+        }else if(mapId==2){
+            // 3 - Forgotten Ruins: more vertical but still readable.
+            ground(0,720); ground(850,1510); ground(1640,2360); ground(2490,3260); ground(3390,4200); ground(4330,5100); ground(5230,WORLD);
+            plat(250,350,190); plat(510,300,180); plat(960,350,190); plat(1210,300,175);
+            plat(1740,355,200); plat(2020,305,185); plat(2590,350,200); plat(2870,300,180);
+            plat(3500,350,210); plat(3800,300,190); plat(4440,350,210); plat(4740,300,190); plat(5350,345,220);
+            springs.add(new RectF(670,GROUND-20,718,GROUND)); springs.add(new RectF(3210,GROUND-20,3258,GROUND));
+            spikes.add(new RectF(2250,GROUND-18,2288,GROUND)); spikes.add(new RectF(4080,GROUND-18,4118,GROUND));
+            ringArc(110,8,72,390,100); ringRow(900,1400,74,270); ringArc(1680,8,72,390,98);
+            ringRow(2550,3140,74,270); ringArc(3420,8,72,390,98); ringRow(4400,5000,74,270);
+        }else if(mapId==3){
+            // 4 - Star Road: fast gaps and spring chains.
+            ground(0,900); ground(1040,1700); ground(1840,2520); ground(2660,3380); ground(3520,4260); ground(4400,5200); ground(5340,WORLD);
+            plat(360,340,210); plat(1160,330,210); plat(1940,320,220); plat(2760,335,210); plat(3630,320,220); plat(4510,330,220); plat(5420,320,220);
+            springs.add(new RectF(850,GROUND-20,898,GROUND)); springs.add(new RectF(1650,GROUND-20,1698,GROUND));
+            springs.add(new RectF(2470,GROUND-20,2518,GROUND)); springs.add(new RectF(4210,GROUND-20,4258,GROUND));
+            ringArc(120,10,72,390,120); ringArc(1060,8,72,390,115); ringArc(1860,8,72,390,115);
+            ringArc(2700,8,72,390,115); ringArc(3550,8,72,390,115); ringArc(4430,8,72,390,115);
         }else{
-            // MAP 3 - Yoshi's Rift: chase-focused finale, long sight lines and escape ramps.
-            ground(0,1120); ground(1240,2110); ground(2240,3150); ground(3270,4210); ground(4340,5220); ground(5350,WORLD);
-            plat(650,350,210); plat(1420,320,220); plat(1800,270,180); plat(2490,340,230); plat(2880,285,180);
-            plat(3510,330,230); plat(3910,275,190); plat(4580,325,220); plat(4930,270,180); plat(5520,330,220);
-            springs.add(new RectF(1070,GROUND-20,1118,GROUND)); springs.add(new RectF(3100,GROUND-20,3148,GROUND)); springs.add(new RectF(5170,GROUND-20,5218,GROUND));
-            spikes.add(new RectF(2000,GROUND-18,2038,GROUND)); spikes.add(new RectF(4040,GROUND-18,4078,GROUND));
-            lineRings(180,1040,76,392); arcRings(1280,9,70,386,115); lineRings(2300,3080,78,390); arcRings(3320,9,70,385,112); lineRings(4400,5150,76,390);
+            // 5 - Yoshi's Rift: finale, long sight lines for the chase.
+            ground(0,1180); ground(1300,2280); ground(2400,3420); ground(3540,4580); ground(4700,WORLD);
+            plat(500,350,210); plat(790,305,180); plat(1450,350,210); plat(1740,305,185);
+            plat(2550,350,220); plat(2860,305,190); plat(3680,350,220); plat(4000,305,190); plat(4860,345,230); plat(5200,300,190);
+            springs.add(new RectF(1120,GROUND-20,1168,GROUND)); springs.add(new RectF(3360,GROUND-20,3408,GROUND));
+            spikes.add(new RectF(2180,GROUND-18,2218,GROUND)); spikes.add(new RectF(4480,GROUND-18,4518,GROUND));
+            ringRow(160,1050,78,392); ringArc(1340,9,72,390,100); ringRow(2460,3300,78,392);
+            ringArc(3580,9,72,390,100); ringRow(4760,5600,78,392);
         }
     }
 
@@ -251,6 +295,22 @@ public class GameViewV4 extends GameView {
             c.drawCircle(q,365+(float)Math.sin(q)*18,22,p);
         }
         }
+    }
+
+    @Override void hud(Canvas c,int w,int h){
+        float s=Math.max(1f,h/480f);
+        p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+        p.setColor(Color.argb(210,5,12,20));c.drawRect(0,0,w,68*s,p);
+        p.setTextSize(14*s);p.setColor(Color.rgb(255,225,72));
+        c.drawText("MARIO",16*s,19*s,p);c.drawText("×"+lives,18*s,39*s,p);
+        p.setColor(Color.WHITE);c.drawText(String.format("%06d",score),92*s,19*s,p);
+        p.setColor(Color.rgb(255,225,72));c.drawText("RING",92*s,39*s,p);
+        p.setColor(Color.WHITE);c.drawText("×"+String.format("%02d",ringCount),138*s,39*s,p);
+        p.setColor(Color.rgb(255,225,72));c.drawText("TIME",w-126*s,19*s,p);
+        p.setColor(Color.WHITE);c.drawText(state==PLAY?"---":String.format("%03d",Math.max(0,(int)Math.ceil(time))),w-72*s,19*s,p);
+        p.setColor(Color.rgb(255,225,72));c.drawText("COURSE "+(mapId+1),w-126*s,40*s,p);
+        p.setColor(Color.WHITE);c.drawText("LAP "+Math.max(1,lap==0?1:lap),w-72*s,40*s,p);
+        p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
     @Override void drawStart(Canvas c){
@@ -311,12 +371,49 @@ public class GameViewV4 extends GameView {
         p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
     }
 
+    private void drawMapSelect(Canvas c){
+        int w=c.getWidth(),h=c.getHeight();
+        p.setColor(Color.rgb(82,157,214));c.drawRect(0,0,w,h,p);
+        p.setColor(Color.rgb(94,176,82));
+        Path land=new Path();land.moveTo(0,h*.72f);land.lineTo(w*.18f,h*.38f);land.lineTo(w*.38f,h*.60f);land.lineTo(w*.58f,h*.30f);land.lineTo(w*.78f,h*.56f);land.lineTo(w,h*.36f);land.lineTo(w,h);land.lineTo(0,h);land.close();c.drawPath(land,p);
+        p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);p.setTextAlign(Paint.Align.CENTER);
+        p.setTextSize(Math.max(22,h*.045f));p.setColor(Color.WHITE);c.drawText("SELECT COURSE",w/2f,h*.12f,p);
+        String[] names={"YOSHI'S MEADOW","PIPE HILLS","FORGOTTEN RUINS","STAR ROAD","YOSHI'S RIFT"};
+        float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
+        for(int i=0;i<5;i++){
+            float px=w*pos[i][0],py=h*pos[i][1];
+            p.setColor(i==4?Color.rgb(145,65,168):Color.rgb(245,214,64));c.drawCircle(px,py,26,p);
+            p.setColor(Color.rgb(25,32,42));c.drawCircle(px,py,17,p);
+            drawBitmapAspect(c,marioStand,new RectF(px-16,py-34,px+16,py+8),false,true);
+            p.setTextSize(Math.max(11,h*.022f));p.setColor(Color.WHITE);c.drawText((i+1)+"",px,py+48,p);
+            c.drawText(names[i],px,py+68,p);
+            if(i<4){p.setColor(Color.WHITE);p.setStrokeWidth(5);c.drawLine(px+30,py,w*pos[i+1][0]-30,h*pos[i+1][1],p);}
+        }
+        p.setTextSize(Math.max(13,h*.026f));p.setColor(Color.WHITE);c.drawText("TOQUE EM UM PONTO • ◀ VOLTAR",w/2f,h*.90f,p);
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+    }
+
+    private void startSelectedMap(int id){
+        mapSelect=false;
+        start();
+        mapId=id;buildLevel();
+        storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v08",false);
+    }
+
     @Override void render(Canvas c){
         super.render(c);
+        if(mapSelect)drawMapSelect(c);
         if(storyIntro)drawStory(c);
     }
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
+        if(mapSelect && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
+            float tx=e.getX(),ty=e.getY(),w=getWidth(),h=getHeight();
+            float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
+            for(int i=0;i<5;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<70*70){startSelectedMap(i);return true;}}
+            if(ty>h*.82f){mapSelect=false;return true;}
+            return true;
+        }
         if(storyIntro && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
             if(storyPage<5)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen_v08",true).apply();}
             return true;
@@ -325,8 +422,8 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void nextLap(){
-        if(lap==1){mapId=1;buildLevel();beginLap(2,false);}
-        else {mapId=2;buildLevel();beginLap(3,true);}
+        if(lap==1){mapId=(mapId+1)%5;buildLevel();beginLap(2,false);}
+        else {mapId=(mapId+1)%5;buildLevel();beginLap(3,true);}
     }
 
     @Override void lapDone(){
@@ -340,12 +437,11 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void menuTap(float x,float y){
-        boolean before=sound;
-        super.menuTap(x,y);
-        if(before!=sound){
-            if(sound&&state==MENU)playTrack(R.raw.escape_menu,true);
-            else if(!sound)stopTrack();
-        }
+        float h=getHeight(),w=getWidth(),ch=Math.min(270,h*.52f),t=h*.42f,row=(ch-85)/3;
+        float first=t+58;
+        if(Math.abs(y-first)<30&&x>w*.27f&&x<w*.73f){mapSelect=true;return;}
+        boolean before=sound;super.menuTap(x,y);
+        if(before!=sound){if(sound&&state==MENU)playTrack(R.raw.escape_menu,true);else if(!sound)stopTrack();}
     }
 
     @Override protected void onDetachedFromWindow(){
