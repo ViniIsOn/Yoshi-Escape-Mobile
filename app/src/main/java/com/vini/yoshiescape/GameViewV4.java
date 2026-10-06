@@ -292,37 +292,41 @@ public class GameViewV4 extends GameView {
         }
     }
 
+    private boolean hasGroundAt(float q){
+        for(RectF s:solids) if(q>=s.left+10 && q<=s.right-10 && Math.abs(s.top-GROUND)<2) return true;
+        return false;
+    }
+
     @Override void drawDecor(Canvas c,float d){
-        // Intentionally do not call super.drawDecor(): the old generic flowers
-        // were placed at fixed Y coordinates and could float across pits.
+        // Decorations are ground props: never draw one when its X falls over a pit.
         if(mapId==0){
-            for(float q=240;q<WORLD;q+=520){
+            for(float q=240;q<WORLD;q+=520){ if(!hasGroundAt(q))continue;
                 p.setColor(Color.rgb(42,125,48));c.drawRect(q,GROUND-30,q+5,GROUND,p);
                 p.setColor(Color.rgb(250,208,62));c.drawCircle(q+2,GROUND-34,7,p);
             }
         }else if(mapId==1){
-            for(float q=260;q<WORLD;q+=660){
+            for(float q=260;q<WORLD;q+=660){ if(!hasGroundAt(q))continue;
                 p.setColor(blend(Color.rgb(70,91,72),Color.rgb(52,38,54),d));
                 c.drawRect(q,GROUND-92,q+22,GROUND,p);
                 p.setColor(Color.rgb(218,145,54));c.drawRect(q+5,GROUND-108,q+17,GROUND-92,p);
             }
         }else if(mapId==2){
-            for(float q=300;q<WORLD;q+=720){
+            for(float q=300;q<WORLD;q+=720){ if(!hasGroundAt(q))continue;
                 p.setColor(Color.rgb(170,218,244));
                 Path z=new Path();z.moveTo(q-18,GROUND);z.lineTo(q,GROUND-72);z.lineTo(q+18,GROUND);z.close();c.drawPath(z,p);
             }
         }else if(mapId==3){
-            for(float q=330;q<WORLD;q+=760){
+            for(float q=330;q<WORLD;q+=760){ if(!hasGroundAt(q))continue;
                 p.setColor(Color.rgb(72,72,82));c.drawRect(q,GROUND-76,q+30,GROUND,p);
                 p.setColor(Color.rgb(230,112,43));c.drawCircle(q+15,GROUND-84,10,p);
             }
         }else if(mapId==4){
-            for(float q=300;q<WORLD;q+=700){
+            for(float q=300;q<WORLD;q+=700){ if(!hasGroundAt(q))continue;
                 p.setColor(Color.argb(180,128,62,180));c.drawRect(q,GROUND-48,q+7,GROUND,p);
                 c.drawCircle(q+3,GROUND-55,13,p);
             }
         }else{
-            for(float q=360;q<WORLD;q+=820){
+            for(float q=360;q<WORLD;q+=820){ if(!hasGroundAt(q))continue;
                 p.setColor(Color.rgb(86,50,48));c.drawRect(q,GROUND-64,q+32,GROUND,p);
                 p.setColor(Color.rgb(242,77,42));c.drawCircle(q+16,GROUND-72,9,p);
             }
@@ -381,8 +385,8 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void finish(){
-        super.finish();
         unlockAfterCourse();
+        super.finish();
     }
 
     private void drawStory(Canvas c){
@@ -443,6 +447,9 @@ public class GameViewV4 extends GameView {
             p.setTextSize(Math.max(10,h*.020f));p.setColor(Color.WHITE);c.drawText((i+1)+". "+names[i],px,py+50,p);
         }
         p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("COMPLETE UMA FASE PARA ABRIR A PRÓXIMA",w/2f,h*.90f,p);
+        float bl=w*.035f,bt=h*.06f,bw=Math.max(110,w*.10f),bh=Math.max(42,h*.07f);
+        p.setColor(Color.argb(220,8,18,30));c.drawRoundRect(bl,bt,bl+bw,bt+bh,10,10,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(13,h*.025f));c.drawText("← MENU",bl+bw/2,bt+bh*.67f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
@@ -464,6 +471,10 @@ public class GameViewV4 extends GameView {
         }
         if(mapSelect && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
             float tx=e.getX(),ty=e.getY(),w=getWidth(),h=getHeight();
+            float bl=w*.035f,bt=h*.06f,bw=Math.max(110,w*.10f),bh=Math.max(42,h*.07f);
+            if(tx>=bl&&tx<=bl+bw&&ty>=bt&&ty<=bt+bh){
+                mapSelect=false;state=MENU;stopTrack();playTrack(R.raw.escape_menu,true);return true;
+            }
             float[][] pos={{.10f,.63f},{.27f,.46f},{.43f,.65f},{.59f,.43f},{.75f,.63f},{.90f,.45f}};
             for(int i=0;i<6;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<72*72){if(i<=unlockedMap)startSelectedMap(i);else beep(ToneGenerator.TONE_PROP_NACK,90);return true;}}
             return true;
