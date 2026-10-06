@@ -24,6 +24,8 @@ public class GameViewV4 extends GameView {
     private boolean returnPressed=false;
     private float yoshiVy=0f;
     private boolean yoshiGrounded=true;
+    private Bitmap hqPanel1,hqPanel2,marioSmw;
+    private float transitionAlpha=1f;
     
     private android.content.SharedPreferences prefs;
 
@@ -31,6 +33,10 @@ public class GameViewV4 extends GameView {
         super(c);
         ctx4=c.getApplicationContext();
         prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
+        unlockedMap=Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0)));
+        hqPanel1=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_1);
+        hqPanel2=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_2);
+        marioSmw=BitmapFactory.decodeResource(getResources(),R.drawable.mario_smw_1);
         playTrack(R.raw.escape_menu,true);
     }
 
@@ -335,24 +341,28 @@ public class GameViewV4 extends GameView {
 
     @Override void hud(Canvas c,int w,int h){
         float s=Math.max(1f,h/480f);
-        p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
-        p.setColor(Color.argb(210,5,12,20));c.drawRect(0,0,w,68*s,p);
-        p.setTextSize(14*s);p.setColor(Color.rgb(255,225,72));
-        c.drawText("MARIO",16*s,19*s,p);c.drawText("×"+lives,18*s,39*s,p);
-        p.setColor(Color.WHITE);c.drawText(String.format("%06d",score),92*s,19*s,p);
-        p.setColor(Color.rgb(255,225,72));c.drawText("RING",92*s,39*s,p);
-        p.setColor(Color.WHITE);c.drawText("×"+String.format("%02d",ringCount),138*s,39*s,p);
-        p.setColor(Color.rgb(255,225,72));c.drawText("TIME",w-126*s,19*s,p);
-        p.setColor(Color.WHITE);c.drawText(state==PLAY?"---":String.format("%03d",Math.max(0,(int)Math.ceil(time))),w-72*s,19*s,p);
-        p.setColor(Color.rgb(255,225,72));c.drawText("COURSE "+(mapId+1),w-126*s,40*s,p);
-        p.setColor(Color.WHITE);c.drawText("LAP "+Math.max(1,lap==0?1:lap),w-72*s,40*s,p);
-        p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
-        if(playable()){
-            float bw=86*s,bh=30*s,l=w-bw-12*s,t=74*s;
-            p.setColor(Color.argb(190,8,18,30));c.drawRoundRect(l,t,l+bw,t+bh,9*s,9*s,p);
-            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(12*s);
-            c.drawText("MENU",l+bw/2,t+20*s,p);p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
-        }
+        // Compact Super Mario World-style status strip: gameplay remains visible.
+        p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);p.setTextSize(13*s);
+        p.setColor(Color.argb(205,12,34,72));c.drawRect(0,0,w,52*s,p);
+        p.setColor(Color.rgb(255,225,55));c.drawText("MARIO",14*s,17*s,p);
+        p.setColor(Color.WHITE);c.drawText("×"+lives,18*s,38*s,p);
+        p.setColor(Color.rgb(255,225,55));c.drawText("★",82*s,18*s,p);
+        p.setColor(Color.WHITE);c.drawText(String.format("%02d",ringCount),103*s,18*s,p);
+        p.setColor(Color.rgb(255,225,55));c.drawText("TIME",w*.47f,17*s,p);
+        p.setColor(Color.WHITE);c.drawText(state==PLAY?"---":String.format("%03d",Math.max(0,(int)Math.ceil(time))),w*.47f+48*s,17*s,p);
+        p.setColor(Color.rgb(255,225,55));c.drawText("COURSE",w*.66f,17*s,p);
+        p.setColor(Color.WHITE);c.drawText(String.valueOf(mapId+1),w*.66f+66*s,17*s,p);
+        p.setColor(Color.rgb(255,225,55));c.drawText("LAP",w*.66f,38*s,p);
+        p.setColor(Color.WHITE);c.drawText(String.valueOf(Math.max(1,lap)),w*.66f+42*s,38*s,p);
+        p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.RIGHT);c.drawText(String.format("%06d",score),w-14*s,38*s,p);
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+    }
+
+    @Override void drawPlayer(Canvas c){
+        if(marioSmw!=null){
+            RectF d=new RectF(x-3,y-4,x+39,y+50);
+            drawBitmapAspect(c,marioSmw,d,!faceRight,true);
+        }else super.drawPlayer(c);
     }
 
     @Override void drawStart(Canvas c){
@@ -389,46 +399,45 @@ public class GameViewV4 extends GameView {
         super.finish();
     }
 
+    @Override void lapDone(){
+        super.lapDone();
+        if(lap>=3) unlockAfterCourse();
+    }
+
     private void drawStory(Canvas c){
         int w=c.getWidth(),h=c.getHeight();
-        p.setColor(Color.rgb(8,12,22));c.drawRect(0,0,w,h,p);
-        float l=w*.12f,r=w*.88f,t=h*.12f,b=h*.76f;
-        p.setColor(Color.rgb(238,235,215));c.drawRoundRect(l,t,r,b,18,18,p);
-        p.setColor(storyPage<3?Color.rgb(82,170,92):Color.rgb(62,42,86));c.drawRect(l+12,t+12,r-12,b-70,p);
-
-        Bitmap yb;
-        // Use the independently visible Yoshi frame in the comic as well.
-        yb=(yoshiFly!=null?yoshiFly:(yoshiRun!=null?yoshiRun:yoshiChase));
-        if(storyPage==0){
-            drawBitmapAspect(c,yb,new RectF(w*.23f,h*.38f,w*.43f,h*.68f),true,true);
-            drawBitmapAspect(c,marioJump,new RectF(w*.58f,h*.22f,w*.72f,h*.58f),false,true);
-        }else if(storyPage==1){
-            drawBitmapAspect(c,yb,new RectF(w*.20f,h*.34f,w*.42f,h*.69f),true,true);
-            drawBitmapAspect(c,marioJump,new RectF(w*.67f,h*.18f,w*.80f,h*.48f),false,true);
-        }else if(storyPage==2){
-            drawBitmapAspect(c,yb,new RectF(w*.39f,h*.25f,w*.61f,h*.67f),false,true);
-        }else if(storyPage==3){
-            drawBitmapAspect(c,yb,new RectF(w*.18f,h*.28f,w*.42f,h*.68f),false,true);
-            drawBitmapAspect(c,marioStand,new RectF(w*.66f,h*.37f,w*.76f,h*.67f),true,true);
-        }else if(storyPage==4){
-            drawBitmapAspect(c,yb,new RectF(w*.16f,h*.28f,w*.42f,h*.68f),false,true);
-            drawBitmapAspect(c,marioRun[2],new RectF(w*.65f,h*.37f,w*.76f,h*.68f),false,true);
-            p.setColor(Color.WHITE);for(int i=0;i<4;i++)c.drawRect(w*.48f+i*28,h*.47f,w*.48f+i*28+18,h*.48f,p);
+        p.setColor(Color.rgb(5,9,18));c.drawRect(0,0,w,h,p);
+        float l=w*.08f,r=w*.92f,t=h*.10f,b=h*.80f;
+        p.setColor(Color.rgb(238,235,215));c.drawRoundRect(l,t,r,b,12,12,p);
+        Bitmap panel=storyPage==0?hqPanel1:storyPage==1?hqPanel2:null;
+        if(panel!=null){
+            drawBitmapAspect(c,panel,new RectF(l+10,t+10,r-10,b-48),false,true);
         }else{
-            drawBitmapAspect(c,yb,new RectF(w*.28f,h*.20f,w*.57f,h*.69f),false,true);
-            drawBitmapAspect(c,marioRun[3],new RectF(w*.68f,h*.39f,w*.79f,h*.69f),false,true);
+            p.setColor(storyPage<4?Color.rgb(35,67,76):Color.rgb(75,25,38));c.drawRect(l+10,t+10,r-10,b-48,p);
+            Bitmap yb=(yoshiFly!=null?yoshiFly:(yoshiRun!=null?yoshiRun:yoshiChase));
+            if(storyPage==2){
+                drawBitmapAspect(c,yb,new RectF(w*.18f,h*.30f,w*.43f,h*.68f),true,true);
+                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioStand,new RectF(w*.65f,h*.35f,w*.76f,h*.68f),false,true);
+            }else if(storyPage==3){
+                drawBitmapAspect(c,yb,new RectF(w*.37f,h*.22f,w*.63f,h*.69f),false,true);
+            }else if(storyPage==4){
+                drawBitmapAspect(c,yb,new RectF(w*.15f,h*.28f,w*.43f,h*.69f),false,true);
+                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioRun[2],new RectF(w*.67f,h*.36f,w*.78f,h*.69f),false,true);
+            }else{
+                drawBitmapAspect(c,yb,new RectF(w*.27f,h*.18f,w*.58f,h*.70f),false,true);
+                drawBitmapAspect(c,marioSmw!=null?marioSmw:marioRun[3],new RectF(w*.70f,h*.39f,w*.80f,h*.70f),false,true);
+            }
         }
-
-        String[] cap={"Mais um salto impossível.","Mario salta. Yoshi fica para trás.","...ele se lembra de todos os outros.","Um rugido ecoa nas ruínas.","Mario corre. Yoshi não para.","A ÚLTIMA MONTARIA começa agora."};
-        p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setColor(Color.rgb(25,29,35));p.setTextSize(Math.max(16,h*.034f));
-        c.drawText(cap[storyPage],w/2,b-27,p);
-        p.setColor(Color.WHITE);p.setTextSize(Math.max(18,h*.038f));c.drawText("PRÓLOGO  •  "+(storyPage+1)+"/6",w/2,h*.08f,p);
-        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(14,h*.028f));
-        c.drawText(storyPage<5?"TOQUE PARA AVANÇAR":"TOQUE PARA CORRER",w/2,h*.86f,p);
+        String[] cap={"Antes da fuga...","O último salto.","Yoshi ficou para trás.","Ele não esqueceu.","CORRA.","A CAÇADA COMEÇA."};
+        p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setColor(Color.rgb(20,24,30));p.setTextSize(Math.max(15,h*.031f));
+        c.drawText(cap[storyPage],w/2,b-18,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(16,h*.034f));c.drawText("PRÓLOGO  "+(storyPage+1)+"/6",w/2,h*.065f,p);
+        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(13,h*.026f));c.drawText(storyPage<5?"TOQUE PARA AVANÇAR":"TOQUE PARA CORRER",w/2,h*.89f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
     }
 
     private void drawMapSelect(Canvas c){
+        unlockedMap=Math.max(unlockedMap,Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0))));
         int w=c.getWidth(),h=c.getHeight();
         p.setColor(Color.rgb(18,35,57));c.drawRect(0,0,w,h,p);
         p.setColor(Color.rgb(31,70,73));
@@ -462,6 +471,9 @@ public class GameViewV4 extends GameView {
     @Override void render(Canvas c){super.render(c);if(mapSelect)drawMapSelect(c);if(storyIntro)drawStory(c);}
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
+        if(e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN && state==WIN && courseComplete){
+            state=MENU;mapSelect=true;stopTrack();playTrack(R.raw.escape_menu,true);return true;
+        }
         if(e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN && playable()){
             float s=Math.max(1f,getHeight()/480f),bw=86*s,bh=30*s,l=getWidth()-bw-12*s,t=74*s;
             if(e.getX()>=l&&e.getX()<=l+bw&&e.getY()>=t&&e.getY()<=t+bh){
