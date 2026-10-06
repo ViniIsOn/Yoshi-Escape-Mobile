@@ -66,6 +66,28 @@ jobs:
             cp /tmp/yoshi_icon.png "app/src/main/res/mipmap-$D/ic_launcher_round.png"
           done
 
+      - name: Decode visual assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          root=Path('app/src/main')
+          out=Path('app/src/main/res/drawable-nodpi'); out.mkdir(parents=True,exist_ok=True)
+          files={
+            'hq_panel_1.b64':'hq_panel_1.png',
+            'hq_panel_2.b64':'hq_panel_2.png',
+            'mario_smw_1.b64':'mario_smw_1.png',
+          }
+          for src,dst in files.items():
+              p=root/src
+              if p.exists():
+                  data=''.join(p.read_text().split())
+                  (out/dst).write_bytes(base64.b64decode(data))
+                  p.unlink()
+                  print(src,'->',dst)
+          PY
+
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
