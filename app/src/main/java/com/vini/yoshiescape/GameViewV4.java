@@ -25,7 +25,7 @@ public class GameViewV4 extends GameView {
     private float yoshiVy=0f;
     private boolean yoshiGrounded=true;
     private Bitmap hqPanel1,hqPanel2,marioSmw;
-    private float transitionAlpha=1f;
+    private float transitionAlpha=0f;
     private float scenePulse=0f;
     private float titleCard=0f;
     private int lastPolishState=-1;
@@ -501,7 +501,13 @@ public class GameViewV4 extends GameView {
         storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v11",false);
     }
 
-    @Override void render(Canvas c){super.render(c);if(mapSelect)drawMapSelect(c);if(storyIntro)drawStory(c);}
+    @Override void render(Canvas c){
+        super.render(c);
+        if(mapSelect) drawMapSelect(c);
+        if(storyIntro) drawStory(c);
+        // Presentation overlays only during active gameplay; menus/cutscenes must never be covered.
+        if(!mapSelect && !storyIntro && (state==PLAY || state==HUNT)) drawPolishOverlay(c);
+    }
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
         if(e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN && state==WIN && courseComplete){
