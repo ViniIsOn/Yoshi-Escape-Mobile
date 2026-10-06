@@ -34,6 +34,8 @@ public class GameViewV4 extends GameView {
     private int lastPolishState=-1;
     private int coursesCleared=0;
     private float mapPulse=0f;
+    private float gimmickClock=0f;
+    private float dangerPulse=0f;
     
     private android.content.SharedPreferences prefs;
 
@@ -136,10 +138,29 @@ public class GameViewV4 extends GameView {
     @Override void update(float dt){
         int before=state;
         scenePulse+=dt;
+        gimmickClock+=dt;
+        dangerPulse=Math.max(0f,dangerPulse-dt);
 
         if(titleCard>0f) titleCard=Math.max(0f,titleCard-dt);
         int ringsBefore=ringCount; boolean groundBefore=grounded; float vyBefore=vy;
         super.update(dt);
+        // World gimmicks: each course changes how the run feels, not only its palette.
+        if(state==PLAY || state==HUNT){
+            if(mapId==2 && grounded){
+                // Frozen Heights: low-friction momentum. Releasing direction no longer stops instantly.
+                if(!leftDown && !rightDown) vx*=0.992f;
+            }else if(mapId==3){
+                // Abandoned Keep: timed danger windows. The warning is visual and predictable.
+                float cycle=gimmickClock%5.0f;
+                if(cycle>3.55f && cycle<4.35f) dangerPulse=.16f;
+            }else if(mapId==4){
+                // Inverted Dream: periodic light gravity; still controllable and never reverses controls.
+                if(!grounded && ((int)(gimmickClock/3.5f)%2==1)) vy-=310f*dt;
+            }else if(mapId==5 && state==HUNT && yActive){
+                // Finale: Yoshi gets a mild late-course pressure boost, capped below Mario's run speed.
+                if(x>WORLD*.62f) yspeed=Math.min(382f,yspeed+22f*dt);
+            }
+        }
         if(ringCount>ringsBefore){ ringFlash=.28f; lastRingVisual=ringCount; beep(ToneGenerator.TONE_PROP_BEEP,24); }
         if(!groundBefore && grounded && vyBefore>260f) springFlash=Math.max(springFlash,.12f);
         ringFlash=Math.max(0f,ringFlash-dt); springFlash=Math.max(0f,springFlash-dt); goalFlash=Math.max(0f,goalFlash-dt);
@@ -320,6 +341,25 @@ public class GameViewV4 extends GameView {
         else if(mapId==3){plat(5200,270,190);ringArc(5230,8,62,355,92);}
         else if(mapId==4){plat(5400,255,190);ringArc(5350,8,62,350,96);}
         else {plat(5350,250,200);ringArc(5300,8,60,345,105);}
+
+        // Signature set-pieces per world: hand placed, readable and reachable.
+        if(mapId==1){
+            plat(1840,255,145); plat(3990,255,145);
+            ringArc(1835,5,38,250,42); ringArc(3985,5,38,250,42);
+        }else if(mapId==2){
+            plat(3260,245,150); springs.add(new RectF(3198,GROUND-20,3246,GROUND));
+            ringArc(3240,6,46,245,62);
+        }else if(mapId==3){
+            springs.add(new RectF(980,GROUND-20,1028,GROUND));
+            springs.add(new RectF(2580,GROUND-20,2628,GROUND));
+            ringArc(2550,7,52,315,88);
+        }else if(mapId==4){
+            plat(2210,235,155); plat(4550,235,155);
+            ringArc(2180,6,48,230,58); ringArc(4520,6,48,230,58);
+        }else if(mapId==5){
+            plat(4860,225,155); springs.add(new RectF(5025,GROUND-20,5073,GROUND));
+            ringArc(4800,8,48,280,105);
+        }
     }
 
     private boolean hasGroundAt(float q){
@@ -493,6 +533,30 @@ public class GameViewV4 extends GameView {
             p.setTextSize(Math.max(11,h*.022f));p.setColor(Color.argb((int)(170+80*pulse),255,225,120));c.drawText("YOSHI IS HUNTING YOU",w/2f,72*Math.max(1f,h/480f),p);
             p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
         }
+        // Course-specific readable gimmick feedback.
+        p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+        if(mapId==2 && (state==PLAY||state==HUNT)){
+            p.setColor(Color.argb(150,205,240,255));p.setTextSize(Math.max(10,h*.019f));
+            c.drawText("FROZEN • KEEP MOMENTUM",w*.5f,h*.94f,p);
+        }else if(mapId==3 && (state==PLAY||state==HUNT)){
+            float cyc=gimmickClock%5f;
+            if(cyc>3.0f){
+                float pulse=.5f+.5f*(float)Math.sin(clock*11);
+                p.setColor(Color.argb((int)(130+100*pulse),255,125,60));p.setTextSize(Math.max(11,h*.022f));
+                c.drawText(cyc<4.35f?"⚠ KEEP MOVING":"SAFE",w*.5f,h*.90f,p);
+                if(dangerPulse>0)p.setColor(Color.argb((int)(45*(dangerPulse/.16f)),255,70,30));
+            }
+        }else if(mapId==4 && (state==PLAY||state==HUNT)){
+            boolean light=((int)(gimmickClock/3.5f)%2==1);
+            p.setColor(Color.argb(160,224,168,255));p.setTextSize(Math.max(10,h*.019f));
+            c.drawText(light?"GRAVITY SHIFT • LIGHT":"GRAVITY SHIFT • NORMAL",w*.5f,h*.94f,p);
+        }else if(mapId==5 && state==HUNT){
+            float pulse=.5f+.5f*(float)Math.sin(clock*9);
+            p.setColor(Color.argb((int)(170+75*pulse),255,90,65));p.setTextSize(Math.max(12,h*.024f));
+            c.drawText(x>WORLD*.62f?"FINAL RUSH!":"DON'T LOOK BACK",w*.5f,h*.90f,p);
+        }
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+
         // subtle cinematic scanline texture.
         p.setColor(Color.argb(9,255,255,255));
         for(int yy=1;yy<h;yy+=5)c.drawRect(0,yy,w,yy+1,p);
