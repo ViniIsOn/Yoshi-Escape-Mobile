@@ -117,6 +117,10 @@ public class GameViewV4 extends GameView {
         super.update(dt);
         // When the timer expires and the hunt begins, play the warning sting
         // once, then resume the lap-3 chase music when it finishes.
+        // Lap 3 is a permanent hunt: if any rendering/state edge case ever
+        // disables Yoshi, bring the chase back instead of leaving an empty lap.
+        if(lap>=3 && state==HUNT && !yActive) spawnYoshi();
+
         if(before!=HUNT && state==HUNT && lap<3){
             playTrack(R.raw.time_is_up,false);
             if(bgm!=null){
@@ -171,35 +175,33 @@ public class GameViewV4 extends GameView {
     }
 
     @Override void drawYoshi(Canvas c){
-        Bitmap b=(yGrace4>0&&yoshiFly!=null)?yoshiFly:(yoshiChase!=null?yoshiChase:yoshiRun);
-        if(b==null){ yActive=false; return; }
-        float pulse=.5f+.5f*(float)Math.sin(clock*8f);
-        p.setColor(Color.argb((int)(65+45*pulse),255,25,20));
-        c.drawCircle(yx+42,yy+36,48,p);
-        boolean flip=x>yx;
-        // Draw Yoshi larger and keep a directional warning visible whenever
-        // he is outside the camera. This prevents invisible/unfair catches.
-        drawBitmapAspect(c,b,new RectF(yx-18,yy-16,yx+104,yy+86),flip,false);
+        // yoshi_run1 and yoshi_chase are currently the exact same repository
+        // asset. yoshi_fly is the independently verified visible sprite, so use
+        // it as the visual source until the final sheet is sliced into frames.
+        Bitmap b=(yoshiFly!=null)?yoshiFly:(yoshiRun!=null?yoshiRun:yoshiChase);
+        if(b==null){ return; }
 
-        float viewLeft=cam, viewRight=cam+(getWidth()/(getHeight()/H));
-        if(yx<viewLeft+35 || yx>viewRight-35){
-            boolean right=yx>viewRight-35;
-            float ax=right?viewRight-62:viewLeft+62;
-            float ay=185;
-            p.setColor(Color.argb(220,210,35,35));
+        float pulse=.5f+.5f*(float)Math.sin(clock*8f);
+        p.setColor(Color.argb((int)(45+35*pulse),255,25,20));
+        c.drawCircle(yx+42,yy+36,42,p);
+
+        // Face Mario. The source artwork faces right.
+        boolean flip=(x<yx);
+        drawBitmapAspect(c,b,new RectF(yx-10,yy-10,yx+94,yy+82),flip,false);
+
+        // World-space warning marker. It is transformed by the same camera as Yoshi.
+        float vw=getWidth()>0&&getHeight()>0?getWidth()/(getHeight()/H):960f;
+        float viewLeft=cam, viewRight=cam+vw;
+        if(yx<viewLeft+45 || yx>viewRight-45){
+            boolean right=yx>viewRight-45;
+            float ax=right?viewRight-70:viewLeft+70, ay=190;
+            p.setColor(Color.rgb(220,48,42));
             Path arrow=new Path();
-            if(right){arrow.moveTo(ax+28,ay);arrow.lineTo(ax-18,ay-24);arrow.lineTo(ax-18,ay+24);}
-            else{arrow.moveTo(ax-28,ay);arrow.lineTo(ax+18,ay-24);arrow.lineTo(ax+18,ay+24);}
-            arrow.close();c.drawPath(arrow,p);
-            p.setColor(Color.WHITE);p.setTextSize(18);p.setFakeBoldText(true);
-            c.drawText("YOSHI",right?ax-80:ax+36,ay+6,p);p.setFakeBoldText(false);
-        }
-        if(yGrace4>0){
-            p.setColor(Color.WHITE);
-            p.setTextSize(17);
-            p.setFakeBoldText(true);
-            c.drawText("YOSHI!",yx+15,yy-10,p);
-            p.setFakeBoldText(false);
+            if(right){arrow.moveTo(ax+24,ay);arrow.lineTo(ax-16,ay-20);arrow.lineTo(ax-16,ay+20);}
+            else{arrow.moveTo(ax-24,ay);arrow.lineTo(ax+16,ay-20);arrow.lineTo(ax+16,ay+20);}
+            arrow.close(); c.drawPath(arrow,p);
+            p.setColor(Color.WHITE);p.setTextSize(16);p.setFakeBoldText(true);
+            c.drawText("YOSHI",right?ax-72:ax+28,ay+5,p);p.setFakeBoldText(false);
         }
     }
 
@@ -276,14 +278,13 @@ public class GameViewV4 extends GameView {
         p.setColor(storyPage<3?Color.rgb(82,170,92):Color.rgb(62,42,86));c.drawRect(l+12,t+12,r-12,b-70,p);
 
         Bitmap yb;
-        if(storyPage<2) yb=yoshiRun;
-        else if(storyPage<4) yb=(yoshiChase!=null?yoshiChase:yoshiRun);
-        else yb=(yoshiFly!=null?yoshiFly:(yoshiChase!=null?yoshiChase:yoshiRun));
+        // Use the independently visible Yoshi frame in the comic as well.
+        yb=(yoshiFly!=null?yoshiFly:(yoshiRun!=null?yoshiRun:yoshiChase));
         if(storyPage==0){
-            drawBitmapAspect(c,yb,new RectF(w*.23f,h*.38f,w*.43f,h*.68f),false,true);
+            drawBitmapAspect(c,yb,new RectF(w*.23f,h*.38f,w*.43f,h*.68f),true,true);
             drawBitmapAspect(c,marioJump,new RectF(w*.58f,h*.22f,w*.72f,h*.58f),false,true);
         }else if(storyPage==1){
-            drawBitmapAspect(c,yb,new RectF(w*.20f,h*.34f,w*.42f,h*.69f),false,true);
+            drawBitmapAspect(c,yb,new RectF(w*.20f,h*.34f,w*.42f,h*.69f),true,true);
             drawBitmapAspect(c,marioJump,new RectF(w*.67f,h*.18f,w*.80f,h*.48f),false,true);
         }else if(storyPage==2){
             drawBitmapAspect(c,yb,new RectF(w*.39f,h*.25f,w*.61f,h*.67f),false,true);
