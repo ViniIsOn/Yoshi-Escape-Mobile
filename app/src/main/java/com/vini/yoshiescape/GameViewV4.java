@@ -130,7 +130,7 @@ public class GameViewV4 extends GameView {
     @Override void update(float dt){
         int before=state;
         scenePulse+=dt;
-        if(transitionAlpha>0f) transitionAlpha=Math.max(0f,transitionAlpha-dt*2.4f);
+
         if(titleCard>0f) titleCard=Math.max(0f,titleCard-dt);
         super.update(dt);
         // When the timer expires and the hunt begins, play the warning sting
@@ -139,7 +139,7 @@ public class GameViewV4 extends GameView {
         // disables Yoshi, bring the chase back instead of leaving an empty lap.
         if(lap>=3 && state==HUNT && !yActive) spawnYoshi();
 
-        if(before!=state){ transitionAlpha=1f; if(state==PLAY||state==HUNT) titleCard=1.65f; lastPolishState=state; }
+        if(before!=state){ if(state==PLAY||state==HUNT) titleCard=1.65f; lastPolishState=state; }
         if(before!=HUNT && state==HUNT && lap<3){
             playTrack(R.raw.time_is_up,false);
             if(bgm!=null){
@@ -374,6 +374,7 @@ public class GameViewV4 extends GameView {
 
     private void drawPolishOverlay(Canvas c){
         int w=c.getWidth(),h=c.getHeight();
+        if(titleCard>0f) titleCard=Math.max(0f,titleCard-0.025f);
         if(titleCard>0f && (state==PLAY||state==HUNT)){
             float a=Math.min(1f,titleCard*2f);
             p.setColor(Color.argb((int)(175*a),5,12,24));
@@ -385,10 +386,6 @@ public class GameViewV4 extends GameView {
             String[] n={"MEADOW OF MEMORIES","PIPE HILLS","FORGOTTEN RUINS","STAR ROAD","INVERTED WORLD","FINAL CONFRONTATION"};
             c.drawText(n[Math.max(0,Math.min(5,mapId))],w*.5f,h*.52f,p);
             p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
-        }
-        if(transitionAlpha>0f){
-            int a=(int)(255*Math.min(1f,transitionAlpha));
-            p.setColor(Color.argb(a,0,0,0));c.drawRect(0,0,w,h,p);
         }
         // subtle cinematic scanline texture; hand-tuned, not a flat generated panel.
         p.setColor(Color.argb(12,255,255,255));
