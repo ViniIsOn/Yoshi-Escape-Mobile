@@ -395,11 +395,6 @@ public class GameViewV4 extends GameView {
         for(int yy=1;yy<h;yy+=4)c.drawRect(0,yy,w,yy+1,p);
     }
 
-    @Override protected void onDraw(Canvas c){
-        super.onDraw(c);
-        drawPolishOverlay(c);
-        invalidate();
-    }
 
     @Override void drawStart(Canvas c){
         super.drawStart(c);
