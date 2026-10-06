@@ -375,69 +375,61 @@ public class GameViewV4 extends GameView {
 
     private void drawMapSelect(Canvas c){
         int w=c.getWidth(),h=c.getHeight();
-        p.setColor(Color.rgb(82,157,214));c.drawRect(0,0,w,h,p);
-        p.setColor(Color.rgb(94,176,82));
-        Path land=new Path();land.moveTo(0,h*.72f);land.lineTo(w*.18f,h*.38f);land.lineTo(w*.38f,h*.60f);land.lineTo(w*.58f,h*.30f);land.lineTo(w*.78f,h*.56f);land.lineTo(w,h*.36f);land.lineTo(w,h);land.lineTo(0,h);land.close();c.drawPath(land,p);
+        p.setColor(Color.rgb(18,35,57));c.drawRect(0,0,w,h,p);
+        p.setColor(Color.rgb(31,70,73));
+        Path land=new Path();land.moveTo(0,h*.75f);land.lineTo(w*.12f,h*.53f);land.lineTo(w*.28f,h*.62f);land.lineTo(w*.43f,h*.39f);land.lineTo(w*.58f,h*.58f);land.lineTo(w*.72f,h*.34f);land.lineTo(w*.88f,h*.55f);land.lineTo(w,h*.40f);land.lineTo(w,h);land.lineTo(0,h);land.close();c.drawPath(land,p);
         p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);p.setTextAlign(Paint.Align.CENTER);
-        p.setTextSize(Math.max(22,h*.045f));p.setColor(Color.WHITE);c.drawText("SELECT COURSE",w/2f,h*.12f,p);
-        String[] names={"YOSHI'S MEADOW","PIPE HILLS","FORGOTTEN RUINS","STAR ROAD","YOSHI'S RIFT"};
-        float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
-        for(int i=0;i<5;i++){
-            float px=w*pos[i][0],py=h*pos[i][1];
-            p.setColor(locked?Color.rgb(85,92,105):(i==4?Color.rgb(145,65,168):Color.rgb(245,214,64)));c.drawCircle(px,py,26,p);
-            p.setColor(Color.rgb(25,32,42));c.drawCircle(px,py,17,p);
-            if(!locked)drawBitmapAspect(c,marioStand,new RectF(px-16,py-34,px+16,py+8),false,true);
-            else {p.setColor(Color.WHITE);p.setTextSize(18);c.drawText("X",px,py+6,p);}
-            p.setTextSize(Math.max(11,h*.022f));p.setColor(Color.WHITE);c.drawText((i+1)+"",px,py+48,p);
-            c.drawText(names[i],px,py+68,p);
-            if(i<4){p.setColor(Color.WHITE);p.setStrokeWidth(5);c.drawLine(px+30,py,w*pos[i+1][0]-30,h*pos[i+1][1],p);}
+        p.setTextSize(Math.max(22,h*.045f));p.setColor(Color.WHITE);c.drawText("YOSHI ESCAPE • WORLD",w/2f,h*.105f,p);
+        String[] names={"PRADO","FLORESTA","GELO","FORTALEZA","INVERTIDO","FINAL"};
+        float[][] pos={{.10f,.63f},{.27f,.46f},{.43f,.65f},{.59f,.43f},{.75f,.63f},{.90f,.45f}};
+        for(int i=0;i<6;i++){
+            float px=w*pos[i][0],py=h*pos[i][1]; boolean locked=i>unlockedMap;
+            if(i<5){float nx=w*pos[i+1][0],ny=h*pos[i+1][1];p.setColor(locked?Color.rgb(70,80,92):Color.rgb(190,220,235));p.setStrokeWidth(5);c.drawLine(px+24,py,nx-24,ny,p);}
+            p.setColor(locked?Color.rgb(72,78,90):(i==5?Color.rgb(210,63,46):Color.rgb(241,199,55)));c.drawCircle(px,py,25,p);
+            p.setColor(Color.rgb(17,24,35));c.drawCircle(px,py,16,p);
+            if(!locked)drawBitmapAspect(c,marioStand,new RectF(px-15,py-33,px+15,py+7),false,true);
+            else {p.setColor(Color.WHITE);p.setTextSize(17);c.drawText("X",px,py+6,p);}
+            p.setTextSize(Math.max(10,h*.020f));p.setColor(Color.WHITE);c.drawText((i+1)+". "+names[i],px,py+50,p);
         }
-        p.setTextSize(Math.max(13,h*.026f));p.setColor(Color.WHITE);c.drawText("FASE BLOQUEADA = X   •   TOQUE PARA JOGAR",w/2f,h*.90f,p);
+        p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("COMPLETE UMA FASE PARA ABRIR A PRÓXIMA",w/2f,h*.90f,p);
         p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
     private void startSelectedMap(int id){
-        mapSelect=false;
-        start();
-        mapId=id;buildLevel();
+        mapSelect=false; start(); mapId=id; buildLevel();
         prefs.edit().putInt("last_map_v11",id).apply();
         storyIntro=(id==0)&&!prefs.getBoolean("prologue_seen_v11",false);
     }
 
-    @Override void render(Canvas c){
-        super.render(c);
-        if(mapSelect)drawMapSelect(c);
-        if(storyIntro)drawStory(c);
-    }
+    @Override void render(Canvas c){super.render(c);if(mapSelect)drawMapSelect(c);if(storyIntro)drawStory(c);}
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
         if(mapSelect && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
             float tx=e.getX(),ty=e.getY(),w=getWidth(),h=getHeight();
-            float[][] pos={{.16f,.58f},{.33f,.43f},{.51f,.61f},{.69f,.40f},{.85f,.58f}};
-            for(int i=0;i<5;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<70*70){if(i<=unlockedMap)startSelectedMap(i);else beep(ToneGenerator.TONE_PROP_NACK,90);return true;}}
-            if(ty>h*.82f){mapSelect=false;return true;}
+            float[][] pos={{.10f,.63f},{.27f,.46f},{.43f,.65f},{.59f,.43f},{.75f,.63f},{.90f,.45f}};
+            for(int i=0;i<6;i++){float dx=tx-w*pos[i][0],dy=ty-h*pos[i][1];if(dx*dx+dy*dy<72*72){if(i<=unlockedMap)startSelectedMap(i);else beep(ToneGenerator.TONE_PROP_NACK,90);return true;}}
             return true;
         }
         if(storyIntro && e.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){
-            if(storyPage<5)storyPage++; else {storyIntro=false; prefs.edit().putBoolean("prologue_seen_v11",true).apply();}
+            if(storyPage<5)storyPage++;else{storyIntro=false;prefs.edit().putBoolean("prologue_seen_v11",true).apply();}
             return true;
         }
         return super.onTouchEvent(e);
     }
 
     @Override void nextLap(){
-        if(lap<3){
-            beginLap(lap+1,lap+1>=3);
-            return;
-        }
-        courseComplete=true;
-        int next=Math.min(4,mapId+1);
-        if(next>unlockedMap){
-            unlockedMap=next;
-            prefs.edit().putInt("unlocked_map_v11",unlockedMap).apply();
-        }
-        state=MENU; stopTrack(); playTrack(R.raw.escape_menu,true);
-        mapSelect=true;
+        if(lap<3){beginLap(lap+1,lap+1>=3);return;}
+        courseComplete=true;int next=Math.min(5,mapId+1);
+        if(next>unlockedMap){unlockedMap=next;prefs.edit().putInt("unlocked_map_v11",unlockedMap).apply();}
+        state=MENU;stopTrack();playTrack(R.raw.escape_menu,true);mapSelect=true;
     }
 
+    @Override void menuTap(float x,float y){
+        float h=getHeight(),w=getWidth(),ch=Math.min(270,h*.52f),t=h*.42f,first=t+58;
+        if(Math.abs(y-first)<34&&x>w*.24f&&x<w*.76f){mapSelect=true;return;}
+        boolean before=sound;super.menuTap(x,y);
+        if(before!=sound){if(sound&&state==MENU)playTrack(R.raw.escape_menu,true);else if(!sound)stopTrack();}
+    }
 
+    @Override protected void onDetachedFromWindow(){stopTrack();super.onDetachedFromWindow();}
+}
