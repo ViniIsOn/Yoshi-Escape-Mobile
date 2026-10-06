@@ -269,8 +269,8 @@ public class GameViewV4 extends GameView {
             springs.add(new RectF(2470,GROUND-20,2518,GROUND)); springs.add(new RectF(4210,GROUND-20,4258,GROUND));
             ringArc(120,10,72,390,120); ringArc(1060,8,72,390,115); ringArc(1860,8,72,390,115);
             ringArc(2700,8,72,390,115); ringArc(3550,8,72,390,115); ringArc(4430,8,72,390,115);
-        }else{
-            // 5 - Yoshi's Rift: finale, long sight lines for the chase.
+        }else if(mapId==4){
+            // 5 - Inverted World: vertical routes, purple atmosphere.
             ground(0,1180); ground(1300,2280); ground(2400,3420); ground(3540,4580); ground(4700,WORLD);
             plat(500,350,210); plat(790,305,180); plat(1450,350,210); plat(1740,305,185);
             plat(2550,350,220); plat(2860,305,190); plat(3680,350,220); plat(4000,305,190); plat(4860,345,230); plat(5200,300,190);
@@ -278,6 +278,16 @@ public class GameViewV4 extends GameView {
             spikes.add(new RectF(2180,GROUND-18,2218,GROUND)); spikes.add(new RectF(4480,GROUND-18,4518,GROUND));
             ringRow(160,1050,78,392); ringArc(1340,9,72,390,100); ringRow(2460,3300,78,392);
             ringArc(3580,9,72,390,100); ringRow(4760,5600,78,392);
+        }else{
+            // 6 - Final Confrontation: fast finale with long readable chase lanes.
+            ground(0,900); ground(1010,1840); ground(1960,2860); ground(2980,3920); ground(4040,4980); ground(5100,WORLD);
+            plat(300,350,190); plat(580,305,170); plat(1120,350,200); plat(1430,300,180);
+            plat(2070,345,210); plat(2390,295,180); plat(3100,345,220); plat(3440,295,190);
+            plat(4160,340,220); plat(4510,290,190); plat(5230,335,240);
+            springs.add(new RectF(840,GROUND-20,888,GROUND)); springs.add(new RectF(2800,GROUND-20,2848,GROUND)); springs.add(new RectF(4920,GROUND-20,4968,GROUND));
+            spikes.add(new RectF(1760,GROUND-18,1798,GROUND)); spikes.add(new RectF(3860,GROUND-18,3898,GROUND));
+            ringArc(120,9,72,390,110); ringArc(1040,9,72,390,105); ringRow(2020,2760,76,390);
+            ringArc(3020,9,72,390,110); ringRow(4100,4860,76,390); ringArc(5140,8,72,390,100);
         }
     }
 
