@@ -32,6 +32,8 @@ public class GameViewV4 extends GameView {
     private int lastRingVisual=0;
     private boolean wasGroundedVisual=false;
     private int lastPolishState=-1;
+    private int coursesCleared=0;
+    private float mapPulse=0f;
     
     private android.content.SharedPreferences prefs;
 
@@ -40,6 +42,7 @@ public class GameViewV4 extends GameView {
         ctx4=c.getApplicationContext();
         prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
         unlockedMap=Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0)));
+        coursesCleared=Math.max(0,prefs.getInt("courses_cleared_v12",0));
         hqPanel1=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_1);
         hqPanel2=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_2);
         marioSmw=BitmapFactory.decodeResource(getResources(),R.drawable.mario_smw_1);
@@ -443,6 +446,10 @@ public class GameViewV4 extends GameView {
         p.setColor(Color.rgb(255,225,55));c.drawText("LAP",w*.66f,38*s,p);
         p.setColor(Color.WHITE);c.drawText(String.valueOf(Math.max(1,lap)),w*.66f+42*s,38*s,p);
         p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.RIGHT);c.drawText(String.format("%06d",score),w-14*s,38*s,p);
+        // course progress bar
+        float prog=clamp(x/GOAL,0,1),barL=w*.29f,barR=w*.43f,barY=34*s;
+        p.setColor(Color.rgb(34,54,79));c.drawRoundRect(barL,barY,barR,barY+7*s,4*s,4*s,p);
+        p.setColor(state==HUNT?Color.rgb(235,67,61):Color.rgb(255,220,61));c.drawRoundRect(barL,barY,barL+(barR-barL)*prog,barY+7*s,4*s,4*s,p);
         p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
     }
 
@@ -515,6 +522,8 @@ public class GameViewV4 extends GameView {
 
     private void unlockAfterCourse(){
         courseComplete=true;
+        coursesCleared=Math.max(coursesCleared,mapId+1);
+        prefs.edit().putInt("courses_cleared_v12",coursesCleared).apply();
         int next=Math.min(5,mapId+1);
         if(next>unlockedMap){
             unlockedMap=next;
@@ -597,7 +606,7 @@ public class GameViewV4 extends GameView {
     private void drawMapSelect(Canvas c){
         unlockedMap=Math.max(unlockedMap,Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0))));
         // tiny living-map motion: selected node breathes instead of looking like a static mockup.
-        scenePulse+=0.016f;
+        scenePulse+=0.016f; mapPulse+=0.016f;
         int w=c.getWidth(),h=c.getHeight();
         p.setColor(Color.rgb(18,35,57));c.drawRect(0,0,w,h,p);
         p.setColor(Color.rgb(31,70,73));
@@ -609,13 +618,14 @@ public class GameViewV4 extends GameView {
         for(int i=0;i<6;i++){
             float px=w*pos[i][0],py=h*pos[i][1]; boolean locked=i>unlockedMap;
             if(i<5){float nx=w*pos[i+1][0],ny=h*pos[i+1][1];p.setColor(locked?Color.rgb(70,80,92):Color.rgb(190,220,235));p.setStrokeWidth(5);c.drawLine(px+24,py,nx-24,ny,p);}
-            p.setColor(locked?Color.rgb(72,78,90):(i==5?Color.rgb(210,63,46):Color.rgb(241,199,55)));c.drawCircle(px,py,25,p);
+            float breathe=(!locked && i==Math.min(unlockedMap,5))?(float)(3+2*Math.sin(mapPulse*3)):0;
+            p.setColor(locked?Color.rgb(72,78,90):(i==5?Color.rgb(210,63,46):Color.rgb(241,199,55)));c.drawCircle(px,py,25+breathe,p);
             p.setColor(Color.rgb(17,24,35));c.drawCircle(px,py,16,p);
             if(!locked)drawBitmapAspect(c,marioStand,new RectF(px-15,py-33,px+15,py+7),false,true);
             else {p.setColor(Color.WHITE);p.setTextSize(17);c.drawText("X",px,py+6,p);}
             p.setTextSize(Math.max(10,h*.020f));p.setColor(Color.WHITE);c.drawText((i+1)+". "+names[i],px,py+50,p);
         }
-        p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("COMPLETE UMA FASE PARA ABRIR A PRÓXIMA",w/2f,h*.90f,p);
+        p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("PROGRESSO  "+coursesCleared+"/6  •  COMPLETE A FASE PARA ABRIR A PRÓXIMA",w/2f,h*.90f,p);
         float bl=w*.035f,bt=h*.06f,bw=Math.max(110,w*.10f),bh=Math.max(42,h*.07f);
         p.setColor(Color.argb(220,8,18,30));c.drawRoundRect(bl,bt,bl+bw,bt+bh,10,10,p);
         p.setColor(Color.WHITE);p.setTextSize(Math.max(13,h*.025f));c.drawText("← MENU",bl+bw/2,bt+bh*.67f,p);
@@ -632,6 +642,13 @@ public class GameViewV4 extends GameView {
         super.render(c);
         if(mapSelect) drawMapSelect(c);
         if(storyIntro) drawStory(c);
+        if(!mapSelect && !storyIntro && state==WIN){
+            int w=c.getWidth(),h=c.getHeight(); float pulse=.5f+.5f*(float)Math.sin(clock*5);
+            p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+            p.setColor(Color.argb((int)(180+70*pulse),255,222,65));p.setTextSize(Math.max(15,h*.030f));
+            c.drawText(mapId<5?"NEW COURSE UNLOCKED!":"THE CHASE IS OVER... FOR NOW.",w/2f,h*.18f,p);
+            p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+        }
         // Presentation overlays only during active gameplay; menus/cutscenes must never be covered.
         if(!mapSelect && !storyIntro && (state==PLAY || state==HUNT)) drawPolishOverlay(c);
     }
