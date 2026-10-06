@@ -36,7 +36,33 @@ public class GameViewV4 extends GameView {
     private float mapPulse=0f;
     private float gimmickClock=0f;
     private float dangerPulse=0f;
-    
+
+    // Replay/progression layer. These values stay local for now and can later
+    // become the source of truth for Play Games cloud save/achievements.
+    private int totalRings=0, totalMedals=0, achievementMask=0;
+    private final int[] medalMask=new int[6];
+    private final float[][] medalX={
+            {690,2700,5050},{1290,3300,5350},{1210,3260,4740},
+            {1160,2760,5200},{790,2860,5200},{1430,3440,5230}
+    };
+    private final float[][] medalY={
+            {280,260,250},{265,260,235},{250,205,250},
+            {280,285,235},{255,260,250},{250,245,245}
+    };
+    private int runStartLives=3, runStartRings=0, runRingsCollected=0;
+    private float runElapsed=0f;
+    private boolean tookDamageThisRun=false;
+    private float achievementToast=0f;
+    private String achievementToastText="";
+    private boolean resultSaved=false;
+
+    private static final String[] ACH_NAMES={
+            "A FUGA COMEÇA","ALGO ESTÁ ATRÁS...","PERDIDO NA FLORESTA","SANGUE FRIO",
+            "INVADINDO A FORTALEZA","DE CABEÇA PARA BAIXO","NÃO OLHE PARA TRÁS!",
+            "100 RINGS!","CAÇADOR DE RINGS","SEM UM ARRANHÃO","VELOCISTA",
+            "O MUNDO É SEU","A VINGANÇA TERMINOU?","CAÇADOR DE SEGREDOS"
+    };
+
     private android.content.SharedPreferences prefs;
 
     public GameViewV4(Context c){
@@ -45,6 +71,10 @@ public class GameViewV4 extends GameView {
         prefs=c.getSharedPreferences("yoshi_escape_save",Context.MODE_PRIVATE);
         unlockedMap=Math.max(0,Math.min(5,prefs.getInt("unlocked_map_v11",0)));
         coursesCleared=Math.max(0,prefs.getInt("courses_cleared_v12",0));
+        totalRings=Math.max(0,prefs.getInt("total_rings_v13",0));
+        totalMedals=Math.max(0,prefs.getInt("total_medals_v13",0));
+        achievementMask=prefs.getInt("achievements_v13",0);
+        for(int i=0;i<6;i++)medalMask[i]=prefs.getInt("medals_"+i+"_v13",0);
         hqPanel1=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_1);
         hqPanel2=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_2);
         marioSmw=BitmapFactory.decodeResource(getResources(),R.drawable.mario_smw_1);
@@ -142,8 +172,19 @@ public class GameViewV4 extends GameView {
         dangerPulse=Math.max(0f,dangerPulse-dt);
 
         if(titleCard>0f) titleCard=Math.max(0f,titleCard-dt);
-        int ringsBefore=ringCount; boolean groundBefore=grounded; float vyBefore=vy;
+        int ringsBefore=ringCount, livesBefore=lives; boolean groundBefore=grounded; float vyBefore=vy;
+        if(state==PLAY||state==ESCAPE||state==HUNT)runElapsed+=dt;
         super.update(dt);
+        if(ringCount>ringsBefore){
+            int gained=ringCount-ringsBefore;
+            runRingsCollected+=gained; totalRings+=gained;
+            prefs.edit().putInt("total_rings_v13",totalRings).apply();
+            if(totalRings>=100)unlockAchievement(7);
+            if(totalRings>=500)unlockAchievement(8);
+        }
+        if(lives<livesBefore || ringCount<ringsBefore)tookDamageThisRun=true;
+        collectSecretMedal();
+        achievementToast=Math.max(0f,achievementToast-dt);
         // World gimmicks: each course changes how the run feels, not only its palette.
         if(state==PLAY || state==HUNT){
             if(mapId==2 && grounded){
@@ -183,6 +224,8 @@ public class GameViewV4 extends GameView {
 
     @Override void spawnYoshi(){
         yActive=true;
+        unlockAchievement(1);
+        unlockAchievement(6);
         yGrace4=1.8f;
         yspeed=285f;
         yx=toStart?Math.min(WORLD-120,x+470f):Math.max(30f,x-470f);
@@ -382,7 +425,7 @@ public class GameViewV4 extends GameView {
 
         float shake=crit?(float)Math.sin(clock*35)*(1.2f+danger*2.3f):0;
         c.save();c.scale(sc,sc);c.translate(-cam+shake,0);
-        drawDecor(c,danger); drawPlatforms(c,danger); drawRings(c); drawSprings(c); drawSpikes(c);
+        drawDecor(c,danger); drawPlatforms(c,danger); drawRings(c); drawSecretMedals(c); drawSprings(c); drawSpikes(c);
         drawStart(c); drawGoal(c); drawPlayer(c); if(yActive)drawYoshi(c);
         c.restore();
         if(crit)dangerOverlay(c,w,h,danger);
@@ -563,6 +606,100 @@ public class GameViewV4 extends GameView {
     }
 
 
+
+    private void unlockAchievement(int id){
+        if(id<0||id>=ACH_NAMES.length)return;
+        int bit=1<<id;
+        if((achievementMask&bit)!=0)return;
+        achievementMask|=bit;
+        prefs.edit().putInt("achievements_v13",achievementMask).apply();
+        achievementToast=3.2f; achievementToastText=ACH_NAMES[id];
+        beep(ToneGenerator.TONE_PROP_ACK,90);
+    }
+
+    private void collectSecretMedal(){
+        if(!(state==PLAY||state==ESCAPE||state==HUNT) || mapId<0||mapId>5)return;
+        for(int i=0;i<3;i++){
+            if((medalMask[mapId]&(1<<i))!=0)continue;
+            float dx=(x+18)-medalX[mapId][i],dy=(y+24)-medalY[mapId][i];
+            if(dx*dx+dy*dy<42*42){
+                medalMask[mapId]|=1<<i; totalMedals++;
+                prefs.edit().putInt("medals_"+mapId+"_v13",medalMask[mapId]).putInt("total_medals_v13",totalMedals).apply();
+                achievementToast=2.8f; achievementToastText="SECRET MEDAL  "+totalMedals+"/18";
+                score+=750; beep(ToneGenerator.TONE_PROP_ACK,80);
+                if(totalMedals>=18)unlockAchievement(13);
+            }
+        }
+    }
+
+    private void drawSecretMedals(Canvas c){
+        if(mapId<0||mapId>5)return;
+        for(int i=0;i<3;i++){
+            if((medalMask[mapId]&(1<<i))!=0)continue;
+            float xx=medalX[mapId][i],yy=medalY[mapId][i];
+            float pulse=1f+.10f*(float)Math.sin(clock*5+i);
+            p.setColor(Color.argb(65,255,220,70));c.drawCircle(xx,yy,23*pulse,p);
+            p.setColor(Color.rgb(255,211,55));c.drawCircle(xx,yy,13*pulse,p);
+            p.setColor(Color.rgb(120,72,25));c.drawCircle(xx,yy,7*pulse,p);
+            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(11);
+            c.drawText("Y",xx,yy+4,p);p.setTextAlign(Paint.Align.LEFT);p.setFakeBoldText(false);
+        }
+    }
+
+    private void saveBestResult(){
+        if(resultSaved)return;
+        resultSaved=true;
+        String k="best_"+mapId+"_v13";
+        int sec=Math.max(1,Math.round(runElapsed));
+        int old=prefs.getInt(k,999999);
+        android.content.SharedPreferences.Editor e=prefs.edit();
+        if(sec<old)e.putInt(k,sec);
+        e.putInt("best_rank_"+mapId+"_v13",Math.max(prefs.getInt("best_rank_"+mapId+"_v13",0),rankValue(rank)));
+        e.apply();
+    }
+
+    private int rankValue(String r){
+        if("P".equals(r))return 5;if("S".equals(r))return 4;if("A".equals(r))return 3;if("B".equals(r))return 2;return 1;
+    }
+
+    private String performanceRank(){
+        if(lap>=3 && !tookDamageThisRun && totalMedals>0)return "P";
+        int v=0;
+        if(!tookDamageThisRun)v+=2;
+        if(runRingsCollected>=35)v+=2; else if(runRingsCollected>=18)v++;
+        if(runElapsed>0&&runElapsed<155)v+=2; else if(runElapsed<210)v++;
+        return v>=6?"S":v>=4?"A":v>=2?"B":"C";
+    }
+
+    private void drawAchievementToast(Canvas c){
+        int w=c.getWidth(),h=c.getHeight();
+        float a=Math.min(1f,achievementToast*2f),bw=Math.min(w*.54f,560),bh=Math.max(58,h*.105f);
+        float l=(w-bw)/2f,t=h*.12f;
+        p.setColor(Color.argb((int)(225*a),8,20,38));c.drawRoundRect(l,t,l+bw,t+bh,14,14,p);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);p.setColor(Color.argb((int)(255*a),255,211,55));c.drawRoundRect(l,t,l+bw,t+bh,14,14,p);p.setStyle(Paint.Style.FILL);
+        p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+        p.setColor(Color.argb((int)(255*a),255,211,55));p.setTextSize(Math.max(12,h*.024f));c.drawText("★ CONQUISTA DESBLOQUEADA",w/2f,t+bh*.40f,p);
+        p.setColor(Color.argb((int)(255*a),255,255,255));p.setTextSize(Math.max(13,h*.027f));c.drawText(achievementToastText,w/2f,t+bh*.72f,p);
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+    }
+
+    private void drawEnhancedResult(Canvas c){
+        int w=c.getWidth(),h=c.getHeight();
+        String pr=performanceRank();
+        float cw=Math.min(w*.70f,720),ch=Math.min(h*.66f,410),l=(w-cw)/2f,t=(h-ch)/2f;
+        p.setColor(Color.argb(238,5,15,30));c.drawRoundRect(l,t,l+cw,t+ch,22,22,p);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);p.setColor(Color.rgb(255,211,55));c.drawRoundRect(l,t,l+cw,t+ch,22,22,p);p.setStyle(Paint.Style.FILL);
+        p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.MONOSPACE);p.setFakeBoldText(true);
+        p.setColor(Color.rgb(255,211,55));p.setTextSize(Math.max(22,h*.050f));c.drawText("COURSE CLEAR!",w/2f,t+ch*.17f,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(14,h*.029f));c.drawText("TIME  "+Math.max(1,Math.round(runElapsed))+"s    RINGS +"+runRingsCollected+"    MEDALS "+Integer.bitCount(medalMask[mapId])+"/3",w/2f,t+ch*.34f,p);
+        c.drawText("NO DAMAGE  "+(!tookDamageThisRun?"YES":"NO")+"    TOTAL MEDALS "+totalMedals+"/18",w/2f,t+ch*.46f,p);
+        p.setColor(pr.equals("S")||pr.equals("P")?Color.rgb(255,226,70):Color.rgb(105,213,255));p.setTextSize(Math.max(42,h*.11f));c.drawText("RANK "+pr,w/2f,t+ch*.69f,p);
+        int best=prefs.getInt("best_"+mapId+"_v13",999999);
+        p.setColor(Color.rgb(170,210,235));p.setTextSize(Math.max(12,h*.024f));c.drawText(best<999999?"BEST  "+best+"s":"NEW RECORD!",w/2f,t+ch*.80f,p);
+        p.setColor(Color.WHITE);p.setTextSize(Math.max(13,h*.026f));c.drawText("TOQUE PARA VOLTAR AO MAPA",w/2f,t+ch*.91f,p);
+        p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
+    }
+
     @Override void drawStart(Canvas c){
         super.drawStart(c);
         p.setColor(Color.rgb(255,245,190));p.setTextSize(14);
@@ -579,6 +716,8 @@ public class GameViewV4 extends GameView {
     @Override void start(){
         int chosen=mapId;
         super.start();
+        runStartLives=lives; runStartRings=ringCount; runRingsCollected=0; runElapsed=0f;
+        tookDamageThisRun=false; resultSaved=false;
         mapId=chosen; buildLevel();
         storyIntro=(mapId==0)&&!prefs.getBoolean("prologue_seen_v11",false); storyPage=0;
         playTrack(R.raw.run_you_fool,true);
@@ -586,6 +725,12 @@ public class GameViewV4 extends GameView {
 
     private void unlockAfterCourse(){
         courseComplete=true;
+        unlockAchievement(mapId==0?0:mapId==1?2:mapId==2?3:mapId==3?4:mapId==4?5:12);
+        if(mapId==5)unlockAchievement(11);
+        if(!tookDamageThisRun)unlockAchievement(9);
+        if(runElapsed>0 && runElapsed<155f)unlockAchievement(10);
+        saveBestResult();
+
         coursesCleared=Math.max(coursesCleared,mapId+1);
         prefs.edit().putInt("courses_cleared_v12",coursesCleared).apply();
         int next=Math.min(5,mapId+1);
@@ -689,7 +834,7 @@ public class GameViewV4 extends GameView {
             else {p.setColor(Color.WHITE);p.setTextSize(17);c.drawText("X",px,py+6,p);}
             p.setTextSize(Math.max(10,h*.020f));p.setColor(Color.WHITE);c.drawText((i+1)+". "+names[i],px,py+50,p);
         }
-        p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("PROGRESSO  "+coursesCleared+"/6  •  COMPLETE A FASE PARA ABRIR A PRÓXIMA",w/2f,h*.90f,p);
+        p.setTextSize(Math.max(12,h*.024f));p.setColor(Color.rgb(190,220,235));c.drawText("PROGRESSO  "+coursesCleared+"/6  •  MEDALHAS "+totalMedals+"/18  •  CONQUISTAS "+Integer.bitCount(achievementMask)+"/14",w/2f,h*.90f,p);
         float bl=w*.035f,bt=h*.06f,bw=Math.max(110,w*.10f),bh=Math.max(42,h*.07f);
         p.setColor(Color.argb(220,8,18,30));c.drawRoundRect(bl,bt,bl+bw,bt+bh,10,10,p);
         p.setColor(Color.WHITE);p.setTextSize(Math.max(13,h*.025f));c.drawText("← MENU",bl+bw/2,bt+bh*.67f,p);
@@ -714,7 +859,9 @@ public class GameViewV4 extends GameView {
             p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT);p.setFakeBoldText(false);
         }
         // Presentation overlays only during active gameplay; menus/cutscenes must never be covered.
-        if(!mapSelect && !storyIntro && (state==PLAY || state==HUNT)) drawPolishOverlay(c);
+        if(!mapSelect && !storyIntro && (state==PLAY || state==ESCAPE || state==HUNT)) drawPolishOverlay(c);
+        if(achievementToast>0f)drawAchievementToast(c);
+        if(!mapSelect && !storyIntro && state==WIN)drawEnhancedResult(c);
     }
 
     @Override public boolean onTouchEvent(android.view.MotionEvent e){
