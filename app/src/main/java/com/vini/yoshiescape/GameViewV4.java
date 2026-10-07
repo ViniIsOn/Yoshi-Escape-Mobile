@@ -403,6 +403,76 @@ public class GameViewV4 extends GameView {
             plat(4860,225,155); springs.add(new RectF(5025,GROUND-20,5073,GROUND));
             ringArc(4800,8,48,280,105);
         }
+
+        // ACT 2 extension: every course now continues far beyond the old 6100px
+        // finish. It adds a second half with longer runs, vertical detours,
+        // springs, hazards and alternate upper routes before the real goal.
+        buildExtendedAct();
+    }
+
+    private void buildExtendedAct(){
+        // Shared backbone keeps the extension readable while each world gets
+        // its own rhythm/set pieces below.
+        ground(6000,6520); ground(6660,7280); ground(7410,8060);
+        ground(8190,8820); ground(8950,9580); ground(9710,WORLD);
+
+        if(mapId==0){
+            plat(6200,345,190); plat(6810,305,175); plat(7080,255,165);
+            plat(7560,350,210); plat(7860,295,180); plat(8340,340,210);
+            plat(8650,285,185); plat(9120,350,220); plat(9460,295,180); plat(9880,335,200);
+            springs.add(new RectF(6460,GROUND-20,6508,GROUND)); springs.add(new RectF(8760,GROUND-20,8808,GROUND));
+            spikes.add(new RectF(7200,GROUND-18,7240,GROUND)); spikes.add(new RectF(9490,GROUND-18,9530,GROUND));
+            ringArc(6070,8,68,390,90); ringRow(6720,7200,70,392); ringArc(7460,9,66,390,110);
+            ringRow(8240,8720,68,392); ringArc(9000,9,66,390,100); ringRow(9740,10040,64,392);
+        }else if(mapId==1){
+            plat(6150,330,180); plat(6420,275,160); plat(6760,350,190); plat(7050,300,170);
+            plat(7500,330,200); plat(7790,265,170); plat(8280,345,205); plat(8580,290,175);
+            plat(9050,335,210); plat(9370,270,175); plat(9820,330,210);
+            springs.add(new RectF(7240,GROUND-20,7288,GROUND)); springs.add(new RectF(9520,GROUND-20,9568,GROUND));
+            spikes.add(new RectF(7990,GROUND-18,8030,GROUND));
+            ringArc(6060,9,66,390,115); ringRow(6720,7150,68,245); ringArc(7440,8,70,390,100);
+            ringRow(8250,8680,68,250); ringArc(8990,9,66,390,110); ringRow(9740,10030,62,392);
+        }else if(mapId==2){
+            plat(6180,335,190); plat(6480,275,165); plat(6810,220,150); plat(7480,345,210);
+            plat(7790,285,180); plat(8330,330,205); plat(8640,255,170); plat(9090,345,220);
+            plat(9420,280,175); plat(9860,325,205);
+            springs.add(new RectF(6460,GROUND-20,6508,GROUND)); springs.add(new RectF(8020,GROUND-20,8068,GROUND));
+            springs.add(new RectF(9540,GROUND-20,9588,GROUND));
+            spikes.add(new RectF(7160,GROUND-18,7200,GROUND)); spikes.add(new RectF(8740,GROUND-18,8780,GROUND));
+            ringArc(6060,9,65,390,125); ringArc(6680,7,52,300,105); ringRow(7480,7950,68,265);
+            ringArc(8230,9,64,390,120); ringRow(9020,9480,66,265); ringArc(9720,7,58,390,90);
+        }else if(mapId==3){
+            plat(6180,325,210); plat(6800,315,220); plat(7480,300,220); plat(8240,320,220);
+            plat(9000,300,220); plat(9760,315,220);
+            springs.add(new RectF(6470,GROUND-20,6518,GROUND)); springs.add(new RectF(7220,GROUND-20,7268,GROUND));
+            springs.add(new RectF(8000,GROUND-20,8048,GROUND)); springs.add(new RectF(8760,GROUND-20,8808,GROUND));
+            springs.add(new RectF(9520,GROUND-20,9568,GROUND));
+            spikes.add(new RectF(8470,GROUND-18,8510,GROUND));
+            ringArc(6040,10,64,390,130); ringArc(6700,9,65,390,130); ringArc(7440,9,65,390,135);
+            ringArc(8200,9,65,390,135); ringArc(8960,9,65,390,130); ringArc(9700,7,62,390,100);
+        }else if(mapId==4){
+            plat(6200,345,205); plat(6500,270,175); plat(6850,205,155); plat(7500,330,210);
+            plat(7820,250,180); plat(8320,340,215); plat(8640,235,175); plat(9100,325,220);
+            plat(9440,245,180); plat(9860,320,210);
+            springs.add(new RectF(6460,GROUND-20,6508,GROUND)); springs.add(new RectF(8040,GROUND-20,8088,GROUND));
+            springs.add(new RectF(9560,GROUND-20,9608,GROUND));
+            spikes.add(new RectF(7160,GROUND-18,7200,GROUND)); spikes.add(new RectF(8780,GROUND-18,8820,GROUND));
+            ringArc(6070,8,68,390,110); ringArc(6460,8,55,300,130); ringRow(7480,7960,68,260);
+            ringArc(8240,9,64,390,125); ringArc(9020,8,58,300,125); ringRow(9720,10030,62,392);
+        }else{
+            // Finale extension: a longer escalating gauntlet with safe readable
+            // landing zones; the pursuit becomes intense without impossible gaps.
+            plat(6160,340,200); plat(6450,285,175); plat(6780,235,160); plat(7480,335,215);
+            plat(7800,275,180); plat(8320,325,220); plat(8650,260,175); plat(9100,330,220);
+            plat(9440,265,180); plat(9820,315,220);
+            springs.add(new RectF(6460,GROUND-20,6508,GROUND)); springs.add(new RectF(7240,GROUND-20,7288,GROUND));
+            springs.add(new RectF(8040,GROUND-20,8088,GROUND)); springs.add(new RectF(8800,GROUND-20,8848,GROUND));
+            springs.add(new RectF(9560,GROUND-20,9608,GROUND));
+            spikes.add(new RectF(7160,GROUND-18,7200,GROUND)); spikes.add(new RectF(8720,GROUND-18,8760,GROUND));
+            spikes.add(new RectF(9480,GROUND-18,9520,GROUND));
+            ringArc(6040,9,66,390,120); ringArc(6680,8,58,320,115); ringArc(7440,9,65,390,125);
+            ringArc(8240,9,64,390,130); ringArc(9000,9,62,390,130); ringArc(9720,7,60,390,100);
+        }
     }
 
     private boolean hasGroundAt(float q){
