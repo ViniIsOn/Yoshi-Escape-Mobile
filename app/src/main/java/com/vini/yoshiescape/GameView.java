@@ -12,7 +12,7 @@ import android.view.View;
 import java.util.*;
 
 public class GameView extends View {
-    static final float H=540f, WORLD=6100f, GROUND=455f, START=105f, GOAL=5840f;
+    static final float H=540f, WORLD=10400f, GROUND=455f, START=105f, GOAL=10120f;
     static final int MENU=0, HOW=1, CREDITS=2, PLAY=3, ESCAPE=4, HUNT=5, LAP=6, WIN=7, OVER=8;
 
     final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG), px=new Paint();
