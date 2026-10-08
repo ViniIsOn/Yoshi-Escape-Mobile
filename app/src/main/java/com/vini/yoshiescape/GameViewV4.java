@@ -408,6 +408,7 @@ public class GameViewV4 extends GameView {
         // finish. It adds a second half with longer runs, vertical detours,
         // springs, hazards and alternate upper routes before the real goal.
         buildExtendedAct();
+        repairTraversal();
     }
 
     private void buildExtendedAct(){
@@ -473,6 +474,26 @@ public class GameViewV4 extends GameView {
             ringArc(6040,9,66,390,120); ringArc(6680,8,58,320,115); ringArc(7440,9,65,390,125);
             ringArc(8240,9,64,390,130); ringArc(9000,9,62,390,130); ringArc(9720,7,60,390,100);
         }
+    }
+
+    // Every secret has a guaranteed nearby landing surface. Avoid placing
+    // collectibles at unreachable elevations or directly above open gaps.
+    private void repairTraversal(){
+        for(int i=0;i<3;i++){
+            float mx=medalX[mapId][i], my=medalY[mapId][i];
+            float top=Math.min(GROUND-55, my+42);
+            plat(mx-65,top,130);
+            // A stepping stone makes the elevated medal route approachable.
+            plat(mx-235,Math.min(GROUND-38,top+65),145);
+        }
+        // Bridges between elevated detours, with clear landing zones.
+        for(float q=6200;q<GOAL-420;q+=760){
+            plat(q+250,GROUND-72,165);
+            plat(q+445,GROUND-118,165);
+            ringArc(q+270,5,48,GROUND-92,30);
+        }
+        // Restore ground under the final goal approach.
+        ground(GOAL-250,WORLD);
     }
 
     private boolean hasGroundAt(float q){
