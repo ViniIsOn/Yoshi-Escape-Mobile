@@ -481,10 +481,15 @@ public class GameViewV4 extends GameView {
     private void repairTraversal(){
         for(int i=0;i<3;i++){
             float mx=medalX[mapId][i], my=medalY[mapId][i];
+            // The medal is 42px above a stable landing. Build a staircase
+            // from ground height on both sides, without obstructing the medal.
             float top=Math.min(GROUND-55, my+42);
             plat(mx-65,top,130);
-            // A stepping stone makes the elevated medal route approachable.
-            plat(mx-235,Math.min(GROUND-38,top+65),145);
+            plat(mx-250,Math.min(GROUND-45,top+70),145);
+            plat(mx+110,Math.min(GROUND-45,top+70),145);
+            // A safe approach is important when the secret sits over a gap.
+            if(!hasGroundAt(mx-170))plat(mx-410,GROUND-48,165);
+            if(!hasGroundAt(mx+205))plat(mx+260,GROUND-48,165);
         }
         // Bridges between elevated detours, with clear landing zones.
         for(float q=6200;q<GOAL-420;q+=760){
@@ -494,6 +499,14 @@ public class GameViewV4 extends GameView {
         }
         // Restore ground under the final goal approach.
         ground(GOAL-250,WORLD);
+        // Make all extension gaps recoverable without relying on a spring.
+        for(float q=6000;q<GOAL-300;q+=115){
+            if(!hasGroundAt(q)){
+                boolean nearPlatform=false;
+                for(RectF r:solids)if(q>=r.left-35&&q<=r.right+35&&r.top<GROUND-25&&r.bottom<GROUND-25){nearPlatform=true;break;}
+                if(!nearPlatform)plat(q-55,GROUND-48,135);
+            }
+        }
     }
 
     private boolean hasGroundAt(float q){
