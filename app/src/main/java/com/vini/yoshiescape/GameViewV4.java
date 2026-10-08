@@ -75,6 +75,7 @@ public class GameViewV4 extends GameView {
         totalMedals=Math.max(0,prefs.getInt("total_medals_v13",0));
         achievementMask=prefs.getInt("achievements_v13",0);
         for(int i=0;i<6;i++)medalMask[i]=prefs.getInt("medals_"+i+"_v13",0);
+        repairSecretMedals();
         hqPanel1=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_1);
         hqPanel2=BitmapFactory.decodeResource(getResources(),R.drawable.hq_panel_2);
         marioSmw=BitmapFactory.decodeResource(getResources(),R.drawable.mario_smw_1);
@@ -479,33 +480,26 @@ public class GameViewV4 extends GameView {
     // Every secret has a guaranteed nearby landing surface. Avoid placing
     // collectibles at unreachable elevations or directly above open gaps.
     private void repairTraversal(){
-        for(int i=0;i<3;i++){
-            float mx=medalX[mapId][i], my=medalY[mapId][i];
-            // The medal is 42px above a stable landing. Build a staircase
-            // from ground height on both sides, without obstructing the medal.
-            float top=Math.min(GROUND-55, my+42);
-            plat(mx-65,top,130);
-            plat(mx-250,Math.min(GROUND-45,top+70),145);
-            plat(mx+110,Math.min(GROUND-45,top+70),145);
-            // A safe approach is important when the secret sits over a gap.
-            if(!hasGroundAt(mx-170))plat(mx-410,GROUND-48,165);
-            if(!hasGroundAt(mx+205))plat(mx+260,GROUND-48,165);
-        }
-        // Bridges between elevated detours, with clear landing zones.
+        // Called by the superclass constructor, before subclass fields are
+        // initialized. Never access medalX/medalY here: that crashes on launch.
+        // Add only simple, deterministic traversal aids at this stage.
         for(float q=6200;q<GOAL-420;q+=760){
             plat(q+250,GROUND-72,165);
             plat(q+445,GROUND-118,165);
             ringArc(q+270,5,48,GROUND-92,30);
         }
-        // Restore ground under the final goal approach.
         ground(GOAL-250,WORLD);
-        // Make all extension gaps recoverable without relying on a spring.
-        for(float q=6000;q<GOAL-300;q+=115){
-            if(!hasGroundAt(q)){
-                boolean nearPlatform=false;
-                for(RectF r:solids)if(q>=r.left-35&&q<=r.right+35&&r.top<GROUND-25&&r.bottom<GROUND-25){nearPlatform=true;break;}
-                if(!nearPlatform)plat(q-55,GROUND-48,135);
-            }
+    }
+
+    private void repairSecretMedals(){
+        for(int i=0;i<3;i++){
+            float mx=medalX[mapId][i], my=medalY[mapId][i];
+            float top=Math.min(GROUND-55,my+42);
+            plat(mx-65,top,130);
+            plat(mx-250,Math.min(GROUND-45,top+70),145);
+            plat(mx+110,Math.min(GROUND-45,top+70),145);
+            if(!hasGroundAt(mx-170))plat(mx-410,GROUND-48,165);
+            if(!hasGroundAt(mx+205))plat(mx+260,GROUND-48,165);
         }
     }
 
