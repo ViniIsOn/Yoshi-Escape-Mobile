@@ -480,26 +480,23 @@ public class GameViewV4 extends GameView {
     // Every secret has a guaranteed nearby landing surface. Avoid placing
     // collectibles at unreachable elevations or directly above open gaps.
     private void repairTraversal(){
-        // Called by the superclass constructor, before subclass fields are
-        // initialized. Never access medalX/medalY here: that crashes on launch.
-        // Add only simple, deterministic traversal aids at this stage.
-        for(float q=6200;q<GOAL-420;q+=760){
-            plat(q+250,GROUND-72,165);
-            plat(q+445,GROUND-118,165);
-            ringArc(q+270,5,48,GROUND-92,30);
+        // Keep the main running lane open. Only a few optional high routes
+        // in Act 2; no automatic platform spam across gaps.
+        for(float q=6750;q<GOAL-650;q+=1450){
+            plat(q,GROUND-155,180);
+            plat(q+255,GROUND-205,175);
+            ringArc(q+15,5,42,GROUND-185,32);
         }
         ground(GOAL-250,WORLD);
     }
 
     private void repairSecretMedals(){
+        // Place one low, isolated landing beneath each medal. Avoid the
+        // previous staircase, which blocked movement on the main route.
         for(int i=0;i<3;i++){
             float mx=medalX[mapId][i], my=medalY[mapId][i];
-            float top=Math.min(GROUND-55,my+42);
-            plat(mx-65,top,130);
-            plat(mx-250,Math.min(GROUND-45,top+70),145);
-            plat(mx+110,Math.min(GROUND-45,top+70),145);
-            if(!hasGroundAt(mx-170))plat(mx-410,GROUND-48,165);
-            if(!hasGroundAt(mx+205))plat(mx+260,GROUND-48,165);
+            float top=Math.min(GROUND-80,my+55);
+            plat(mx-70,top,140);
         }
     }
 
