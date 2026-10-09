@@ -538,14 +538,18 @@ public class GameViewV4 extends GameView {
                 if(RectF.intersects(a,b)){solids.remove(i);break;}
             }
         }
-        // Rings should be in free space, not inside a solid tile.
-        for(Ring r:rings){
+        // Rings are immutable. Remove any embedded in terrain rather than
+        // attempting to modify their final coordinates.
+        for(int i=rings.size()-1;i>=0;i--){
+            Ring r=rings.get(i);
+            boolean embedded=false;
             for(RectF solid:solids){
                 if(r.x>solid.left+8 && r.x<solid.right-8 &&
                         r.y>solid.top+8 && r.y<solid.bottom-8){
-                    r.y=Math.max(65,solid.top-34);
+                    embedded=true;break;
                 }
             }
+            if(embedded)rings.remove(i);
         }
     }
 
