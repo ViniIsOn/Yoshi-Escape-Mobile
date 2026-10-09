@@ -410,6 +410,7 @@ public class GameViewV4 extends GameView {
         // springs, hazards and alternate upper routes before the real goal.
         buildExtendedAct();
         repairTraversal();
+        sanitizeLevelGeometry();
     }
 
     private void buildExtendedAct(){
@@ -497,6 +498,54 @@ public class GameViewV4 extends GameView {
             float mx=medalX[mapId][i], my=medalY[mapId][i];
             float top=Math.min(GROUND-80,my+55);
             plat(mx-70,top,140);
+        }
+    }
+
+    // Run after all world pieces are built, before play begins.
+    // This is intentionally independent of subclass fields because the
+    // superclass invokes buildLevel() from its own constructor.
+    private void sanitizeLevelGeometry(){
+        // Springs must have supporting ground, not float over a pit.
+        for(int i=springs.size()-1;i>=0;i--){
+            RectF spring=springs.get(i);
+            float cx=spring.centerX();
+            if(!hasGroundAt(cx)){
+                springs.remove(i);
+                continue;
+            }
+            spring.top=GROUND-20;
+            spring.bottom=GROUND;
+        }
+        // Spikes belong to the floor and should not be hidden by platforms.
+        for(int i=spikes.size()-1;i>=0;i--){
+            RectF spike=spikes.get(i);
+            if(!hasGroundAt(spike.centerX())){spikes.remove(i);continue;}
+            boolean blocked=false;
+            for(RectF ledge:solids){
+                if(ledge.top<GROUND-22 && ledge.bottom<GROUND-22 &&
+                        ledge.left<spike.right && ledge.right>spike.left &&
+                        ledge.top>GROUND-145){blocked=true;break;}
+            }
+            if(blocked)spikes.remove(i);
+        }
+        // Avoid intersecting ledges that make an impassable ceiling.
+        for(int i=solids.size()-1;i>=0;i--){
+            RectF a=solids.get(i);
+            if(a.top>=GROUND-1)continue;
+            for(int j=0;j<i;j++){
+                RectF b=solids.get(j);
+                if(b.top>=GROUND-1)continue;
+                if(RectF.intersects(a,b)){solids.remove(i);break;}
+            }
+        }
+        // Rings should be in free space, not inside a solid tile.
+        for(Ring r:rings){
+            for(RectF solid:solids){
+                if(r.x>solid.left+8 && r.x<solid.right-8 &&
+                        r.y>solid.top+8 && r.y<solid.bottom-8){
+                    r.y=Math.max(65,solid.top-34);
+                }
+            }
         }
     }
 
